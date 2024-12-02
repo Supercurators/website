@@ -50,7 +50,11 @@ export function NewSupercurationPage() {
 
       await addSupercuration({
         ...formData,
-        slug: formData.is_public ? formData.slug : undefined
+        title: formData.title,
+        description: formData.description,
+        thumbnail_url: formData.thumbnail_url,
+        topics: formData.topics,
+        is_public: formData.is_public
       });
       navigate('/supercurations');
     } catch (err) {

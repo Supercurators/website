@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Clock, Grid, List } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useCategoryStore } from '../store/categoryStore';
 import type { Supercuration, Link } from '../types';
+import { Helmet } from 'react-helmet';
 
 export function PublicSupercurationPage() {
   const { slug } = useParams<{ slug: string }>();

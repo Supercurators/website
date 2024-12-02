@@ -35,7 +35,6 @@ export async function fetchLinkPreviews(urls: string[]): Promise<ExtractedLink[]
         };
       } catch (err) {
         console.error(`Error fetching preview for ${url}:`, err);
-        // Return basic metadata on error
         return {
           url,
           title: new URL(url).hostname,
@@ -46,9 +45,13 @@ export async function fetchLinkPreviews(urls: string[]): Promise<ExtractedLink[]
     })
   );
 
-  return linkPreviews.filter((link): link is ExtractedLink => 
+  return linkPreviews.filter((link): boolean => 
     link !== null && 
+    typeof link === 'object' &&
+    typeof link.url === 'string' &&
     typeof link.title === 'string' && 
-    typeof link.description === 'string'
-  );
+    typeof link.description === 'string' &&
+    typeof link.selected === 'boolean' &&
+    (!('thumbnail_url' in link) || typeof link.thumbnail_url === 'string')
+  ) as ExtractedLink[];
 }

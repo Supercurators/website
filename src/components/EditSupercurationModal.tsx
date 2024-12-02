@@ -4,7 +4,7 @@ import { useSupercurationStore } from '../store/supercurationStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { TagCategoryManager } from './TagCategoryManager';
 import { suggestTagCategories } from '../lib/tagSuggestions';
-import type { Supercuration, TagCategory } from '../types';
+import type { Supercuration, TagCategory, Link } from '../types';
 
 interface EditSupercurationModalProps {
   supercuration: Supercuration;
@@ -27,6 +27,7 @@ export function EditSupercurationModal({ supercuration, onClose }: EditSupercura
     slug: supercuration.slug || '',
     tagCategories: supercuration.tagCategories || []
   });
+  const [links, setLinks] = useState<Link[]>([]);
 
   const generateSlug = (title: string) => {
     return title
@@ -46,7 +47,7 @@ export function EditSupercurationModal({ supercuration, onClose }: EditSupercura
   const handleSuggestTags = async () => {
     try {
       setLoading(true);
-      const suggestions = await suggestTagCategories(supercuration);
+      const suggestions = await suggestTagCategories(supercuration, links);
       setFormData(prev => ({
         ...prev,
         tagCategories: suggestions

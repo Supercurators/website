@@ -10,6 +10,36 @@ import { EditTopicsModal } from '../components/EditTopicsModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import type { Link } from '../types';
 
+interface FirestoreLinkData {
+  url?: string;
+  title: string;
+  description: string;
+  thumbnail_url?: string;
+  emoji_tags: string[];
+  topic_ids: string[];
+  supercuration_ids?: string[];
+  supercuration_tags?: Record<string, string[]>;
+  is_original_content: boolean;
+  created_by: string;
+  created_at: { toDate: () => Date };
+  user: {
+    id: string;
+    name: string;
+    avatar_url: string;
+  };
+  likes: number;
+  reposts_count: number;
+  repost_note?: string;
+  original_post?: {
+    id: string;
+    user: {
+      id: string;
+      name: string;
+      avatar_url: string;
+    };
+  };
+}
+
 export function SavedPage() {
   const { topics } = useCategoryStore();
   const { toggleLike, updateLinkFormats, updateLinkTopics, removeLink } = useLinkStore();
@@ -64,13 +94,20 @@ export function SavedPage() {
         }
 
         const querySnapshot = await getDocs(linksQuery);
-        const fetchedLinks: Link[] = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          created_at: doc.data().created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
-          liked: false,
-          likes: doc.data().likes || 0
-        })) as Link[];
+        const fetchedLinks: Link[] = querySnapshot.docs.map(doc => {
+          const docData = doc.data() as FirestoreLinkData;
+          return {
+            id: doc.id,
+            ...docData,
+            created_at: docData.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
+            likes: docData.likes || 0,
+            emoji_tags: docData.emoji_tags || [],
+            topic_ids: docData.topic_ids || [],
+            supercuration_ids: docData.supercuration_ids || [],
+            is_original_content: docData.is_original_content || false,
+            liked: false
+          };
+        });
 
         setLinks(fetchedLinks);
       } catch (err) {
