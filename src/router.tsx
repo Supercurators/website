@@ -11,6 +11,14 @@ const supercurationRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/s/$slug',
   component: PublicSupercurationPage,
+  validateSearch: (search: Record<string, unknown>) => ({}),
+  loader: async ({ params: { slug } }) => {
+    // Add validation to ensure slug exists
+    if (!slug) {
+      throw new Error('Slug is required');
+    }
+    return { slug };
+  },
 });
 
 // Create and export the router with the route tree
