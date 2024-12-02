@@ -18,6 +18,10 @@ export function PublicSupercurationPage() {
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
   useEffect(() => {
+    console.log('Current slug param:', slug);
+  }, [slug]);
+
+  useEffect(() => {
     const fetchSupercuration = async () => {
       if (!slug) return;
 
@@ -25,10 +29,14 @@ export function PublicSupercurationPage() {
         setLoading(true);
         setError(null);
 
+        console.log('Fetching supercuration with slug:', slug);
+
         // Find supercuration by slug
         const supercurationsRef = collection(db, 'supercurations');
         const q = query(supercurationsRef, where('slug', '==', slug));
         const querySnapshot = await getDocs(q);
+
+        console.log('Query results:', querySnapshot.size);
 
         if (querySnapshot.empty) {
           throw new Error('Supercuration not found');
@@ -38,6 +46,13 @@ export function PublicSupercurationPage() {
           id: querySnapshot.docs[0].id,
           ...querySnapshot.docs[0].data()
         } as Supercuration;
+
+        console.log('Found supercuration:', supercurationData);
+
+        // Verify that is_public is true
+        if (!supercurationData.is_public) {
+          throw new Error('This supercuration is private');
+        }
 
         setSupercuration(supercurationData);
 
