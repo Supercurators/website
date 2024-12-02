@@ -1,24 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Globe, MapPin, Clock, Mail, Lock } from 'lucide-react';
+import { Globe, MapPin, Clock, Mail, Grid, List } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import type { User } from '../types';
-import { useCategoryStore } from '../store/categoryStore';
-import { useLinkStore } from '../store/linkStore';
-import { useSubscriptionStore } from '../store/subscriptionStore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import type { User, Supercuration } from '../types';
 import { useAuthStore } from '../store/authStore';
+import { useSubscriptionStore } from '../store/subscriptionStore';
 
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser } = useAuthStore();
-  const { topics } = useCategoryStore();
-  const { links } = useLinkStore();
   const { isSubscribed, subscribe, unsubscribe } = useSubscriptionStore();
   const [user, setUser] = useState<User | null>(null);
+  const [supercurations, setSupercurations] = useState<Supercuration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -28,26 +26,28 @@ export function ProfilePage() {
         setLoading(true);
         setError(null);
 
+        // Fetch user profile
         const userDoc = await getDoc(doc(db, 'users', id));
         if (!userDoc.exists()) {
           throw new Error('User not found');
         }
 
-        const userData = userDoc.data();
-        const userProfile: User = {
-          id: userDoc.id,
-          email: userData.email || '',
-          name: userData.name || 'Anonymous User',
-          avatar_url: userData.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${userData.email}`,
-          bio: userData.bio || undefined,
-          location: userData.location || undefined,
-          website: userData.website || undefined,
-          created_at: userData.created_at || new Date().toISOString(),
-          subscribers_count: userData.subscribers_count || 0,
-          subscriptions_count: userData.subscriptions_count || 0
-        };
+        const userData = userDoc.data() as User;
+        setUser(userData);
 
-        setUser(userProfile);
+        // Fetch public supercurations
+        const supercurationsQuery = query(
+          collection(db, 'supercurations'),
+          where('created_by', '==', id),
+          where('is_public', '==', true)
+        );
+        const supercurationsSnapshot = await getDocs(supercurationsQuery);
+        const supercurationsData = supercurationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Supercuration[];
+        setSupercurations(supercurationsData);
+
       } catch (err) {
         console.error('Error fetching profile:', err);
         setError(err instanceof Error ? err.message : 'Failed to load profile');
@@ -76,11 +76,6 @@ export function ProfilePage() {
     }
   };
 
-  const getUserLinks = () => {
-    if (!id || !isSubscribed(id)) return [];
-    return links.filter(link => link.created_by === id);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -97,168 +92,154 @@ export function ProfilePage() {
     );
   }
 
-  const userLinks = getUserLinks();
-  const subscribed = isSubscribed(user.id);
-
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
       {/* Profile Header */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
-        <div className="h-32 bg-gradient-to-r from-blue-500 to-blue-600"></div>
-        <div className="px-6 pb-6">
-          <div className="relative -mt-16 mb-4">
+      <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="flex flex-col md:flex-row items-start gap-8">
             <img
               src={user.avatar_url}
               alt={user.name}
-              className="w-32 h-32 rounded-full border-4 border-white object-cover bg-gray-100"
+              className="w-32 h-32 rounded-full border-4 border-white/10"
             />
-          </div>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold">{user.name}</h1>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span>{user.subscribers_count} subscribers</span>
-                <span>•</span>
-                <span>{user.subscriptions_count} subscriptions</span>
-              </div>
-            </div>
-            {currentUser && currentUser.id !== user.id && (
-              <button
-                onClick={handleSubscribe}
-                disabled={subscribing}
-                className={`px-4 py-2 rounded-full font-medium text-sm flex items-center gap-2 ${
-                  subscribed
-                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                <Mail className="w-4 h-4" />
-                {subscribing ? 'Processing...' : subscribed ? 'Unsubscribe' : 'Subscribe'}
-              </button>
-            )}
-          </div>
-
-          {/* User Info */}
-          <div className="space-y-4">
-            {user.bio && (
-              <div>
-                <h2 className="font-medium text-gray-900 mb-2">About my curation topics</h2>
-                <p className="text-gray-600 whitespace-pre-wrap">{user.bio}</p>
-              </div>
-            )}
-            
-            <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-              {user.location && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4" />
-                  {user.location}
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div>
+                  <h1 className="text-3xl font-bold">{user.name}</h1>
+                  <p className="text-gray-400">{user.email}</p>
                 </div>
+                {currentUser && currentUser.id !== user.id && (
+                  <button
+                    onClick={handleSubscribe}
+                    disabled={subscribing}
+                    className={`px-6 py-2 rounded-full font-medium text-sm flex items-center gap-2 transition-colors ${
+                      isSubscribed(user.id)
+                        ? 'bg-gray-700 text-white hover:bg-gray-600'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    <Mail className="w-4 h-4" />
+                    {subscribing ? 'Processing...' : isSubscribed(user.id) ? 'Unsubscribe' : 'Subscribe'}
+                  </button>
+                )}
+              </div>
+
+              {user.bio && (
+                <p className="text-lg text-gray-300 mb-6">{user.bio}</p>
               )}
-              {user.website && (
-                <a
-                  href={user.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
-                >
-                  <Globe className="w-4 h-4" />
-                  {new URL(user.website).hostname}
-                </a>
-              )}
-              <div className="text-gray-400">
-                Joined {new Date(user.created_at).toLocaleDateString()}
+
+              <div className="flex flex-wrap gap-6 text-sm text-gray-400">
+                {user.location && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {user.location}
+                  </div>
+                )}
+                {user.website && (
+                  <a
+                    href={user.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                  >
+                    <Globe className="w-4 h-4" />
+                    {new URL(user.website).hostname}
+                  </a>
+                )}
+                <div className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  Joined {new Date(user.created_at).toLocaleDateString()}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Content Section */}
-      <div className="space-y-4">
-        {!subscribed ? (
-          <div className="bg-white p-8 rounded-lg shadow-sm text-center space-y-4">
-            <div className="flex justify-center">
-              <Lock className="w-12 h-12 text-gray-400" />
-            </div>
-            <h2 className="text-xl font-bold">Subscribe to See Shared Links</h2>
-            <p className="text-gray-600 max-w-md mx-auto">
-              Subscribe to {user.name}'s profile to access their curated collection of links and receive updates via email.
-            </p>
-            {currentUser ? (
-              <button
-                onClick={handleSubscribe}
-                disabled={subscribing}
-                className="px-6 py-2 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 flex items-center gap-2 mx-auto"
-              >
-                <Mail className="w-4 h-4" />
-                Subscribe with {currentUser.email}
-              </button>
-            ) : (
-              <Link
-                to="/login"
-                className="px-6 py-2 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 inline-flex items-center gap-2"
-              >
-                Sign in to Subscribe
-              </Link>
-            )}
+      {/* Public Supercurations */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-bold text-gray-900">
+            Public Supercurations
+          </h2>
+          <div className="flex items-center gap-2 border rounded-full p-1 bg-white">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-full ${
+                viewMode === 'grid'
+                  ? 'bg-gray-100 text-gray-900'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-full ${
+                viewMode === 'list'
+                  ? 'bg-gray-100 text-gray-900'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <List className="w-4 h-4" />
+            </button>
           </div>
-        ) : (
-          <>
-            <h2 className="text-xl font-bold">Shared Links ({userLinks.length})</h2>
-            {userLinks.map((link) => (
-              <div
-                key={link.id}
-                className="bg-white rounded-lg shadow-sm overflow-hidden p-4"
-              >
-                <div className="flex gap-4">
-                  {link.thumbnail_url && (
-                    <img
-                      src={link.thumbnail_url}
-                      alt=""
-                      className="w-24 h-24 rounded object-cover"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-gray-900 hover:text-blue-600 block mb-1"
-                    >
-                      {link.title}
-                    </a>
-                    <p className="text-sm text-gray-500 mb-2">
-                      {link.description}
-                    </p>
-                    <div className="text-sm text-gray-400">
-                      {new Date(link.created_at).toLocaleDateString()}
-                    </div>
+        </div>
 
-                    {link.topic_ids?.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {link.topic_ids.map((topicId) => {
-                          const topic = topics.find((t) => t.id === topicId);
-                          if (!topic) return null;
-                          return (
-                            <span
-                              key={topic.id}
-                              className="px-2 py-0.5 text-xs rounded-full"
-                              style={{
-                                backgroundColor: `${topic.color}15`,
-                                color: topic.color
-                              }}
-                            >
-                              {topic.name}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
+        {supercurations.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg">
+            <p className="text-gray-500">No public supercurations yet</p>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {supercurations.map((supercuration) => (
+              <Link
+                key={supercuration.id}
+                to={`/s/${supercuration.slug}`}
+                className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+              >
+                {supercuration.thumbnail_url && (
+                  <img
+                    src={supercuration.thumbnail_url}
+                    alt=""
+                    className="w-full h-48 object-cover"
+                  />
+                )}
+                <div className="p-4">
+                  <h3 className="font-medium text-lg mb-2">{supercuration.title}</h3>
+                  <p className="text-sm text-gray-500 mb-4 line-clamp-2">
+                    {supercuration.description}
+                  </p>
+                  <div className="flex items-center justify-between text-sm text-gray-400">
+                    <span>{supercuration.links_count || 0} links</span>
+                    <span>{new Date(supercuration.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
-          </>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {supercurations.map((supercuration) => (
+              <Link
+                key={supercuration.id}
+                to={`/s/${supercuration.slug}`}
+                className="block bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+              >
+                <div className="p-4">
+                  <h3 className="font-medium text-lg mb-2">{supercuration.title}</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    {supercuration.description}
+                  </p>
+                  <div className="flex items-center justify-between text-sm text-gray-400">
+                    <span>{supercuration.links_count || 0} links</span>
+                    <span>{new Date(supercuration.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         )}
       </div>
     </div>

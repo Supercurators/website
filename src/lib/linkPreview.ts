@@ -1,7 +1,5 @@
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
-import * as cheerio from 'cheerio';
 import { parse } from 'node-html-parser';
+import * as cheerio from 'cheerio';
 
 interface LinkMetadata {
   title: string;
@@ -9,36 +7,44 @@ interface LinkMetadata {
   thumbnail_url?: string;
 }
 
-const hashUrl = (url: string): string => {
-  let hash = 0;
-  for (let i = 0; i < url.length; i++) {
-    const char = url.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+
+// YouTube URL patterns
+const YOUTUBE_PATTERNS = [
+  /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)/,
+  /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^?]+)/,
+  /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^?]+)/
+];
+
+const getYouTubeVideoId = (url: string): string | null => {
+  for (const pattern of YOUTUBE_PATTERNS) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
   }
-  return hash.toString();
+  return null;
 };
 
-async function saveToCache(url: string, metadata: LinkMetadata): Promise<void> {
+const getYouTubeMetadata = async (videoId: string): Promise<LinkMetadata> => {
   try {
-    const hash = hashUrl(url);
-    const sanitizedData = {
-      title: metadata.title?.substring(0, 500) || '',
-      description: metadata.description?.substring(0, 1000) || '',
-      thumbnail_url: metadata.thumbnail_url || null,
-      timestamp: Date.now()
+    const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+    if (!response.ok) throw new Error('Failed to fetch YouTube metadata');
+    
+    const data = await response.json();
+    return {
+      title: data.title,
+      description: data.author_name,
+      thumbnail_url: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
     };
-
-    if (!sanitizedData.title && !sanitizedData.description) {
-      console.warn('Invalid metadata for caching:', url);
-      return;
-    }
-
-    await setDoc(doc(db, 'linkPreviews', hash), sanitizedData);
   } catch (error) {
-    console.error('Cache save error:', error);
+    console.error('YouTube metadata fetch error:', error);
+    return {
+      title: 'YouTube Video',
+      description: 'Video description unavailable',
+      thumbnail_url: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+    };
   }
-}
+};
 
 export async function getLinkPreview(url: string): Promise<LinkMetadata> {
   try {
@@ -52,6 +58,12 @@ export async function getLinkPreview(url: string): Promise<LinkMetadata> {
       new URL(url);
     } catch (e) {
       throw new Error('Invalid URL');
+    }
+
+    // Check if it's a YouTube URL
+    const youtubeId = getYouTubeVideoId(url);
+    if (youtubeId) {
+      return getYouTubeMetadata(youtubeId);
     }
 
     // Try multiple CORS proxies in case one fails
@@ -142,9 +154,6 @@ export async function getLinkPreview(url: string): Promise<LinkMetadata> {
         metadata.thumbnail_url = undefined;
       }
     }
-
-    // Cache the metadata
-    await saveToCache(url, metadata);
 
     return metadata;
   } catch (error) {

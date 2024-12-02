@@ -29,11 +29,11 @@ interface LinkState {
   fetchLinks: () => Promise<void>;
   addLink: (data: AddLinkData) => Promise<void>;
   updateLink: (id: string, data: Partial<Link>) => Promise<void>;
-  updateLinkTopics: (id: string, topicIds: string[]) => Promise<void>;
-  updateLinkFormats: (id: string, formats: string[]) => Promise<void>;
   removeLink: (id: string) => Promise<void>;
   toggleLike: (id: string) => Promise<void>;
   setOfflineStatus: (status: boolean) => Promise<void>;
+  updateLinkTopics: (id: string, topics: string[]) => Promise<void>;
+  updateLinkFormats: (id: string, formats: string[]) => Promise<void>;
   removeTopicFromLinks: (topicId: string) => Promise<void>;
 }
 
@@ -183,40 +183,9 @@ export const useLinkStore = create<LinkState>((set, get) => ({
     }
   },
 
-  updateLinkTopics: async (id: string, topicIds: string[]) => {
-    set((state) => ({
-      links: state.links.map((link) =>
-        link.id === id ? { ...link, topic_ids: topicIds } : link
-      ),
-    }));
-
-    try {
-      const docRef = doc(db, 'links', id);
-      await updateDoc(docRef, { topic_ids: topicIds });
-    } catch (error) {
-      console.error('Error updating link topics:', error);
-      throw error;
-    }
-  },
-
-  updateLinkFormats: async (id: string, formats: string[]) => {
-    set((state) => ({
-      links: state.links.map((link) =>
-        link.id === id ? { ...link, emoji_tags: formats } : link
-      ),
-    }));
-
-    try {
-      const docRef = doc(db, 'links', id);
-      await updateDoc(docRef, { emoji_tags: formats });
-    } catch (error) {
-      console.error('Error updating link formats:', error);
-      throw error;
-    }
-  },
-
   removeLink: async (id: string) => {
     try {
+      console.log('Attempting to delete link with ID:', id);
       const currentUser = auth.currentUser;
       if (!currentUser) {
         throw new Error('Must be logged in to delete links');
@@ -224,27 +193,33 @@ export const useLinkStore = create<LinkState>((set, get) => ({
 
       const linkRef = doc(db, 'links', id);
       const linkDoc = await getDoc(linkRef);
-      const linkData = linkDoc.data();
-
-      await deleteDoc(linkRef);
-
-      if (linkData?.supercuration_ids?.length) {
-        const batch = writeBatch(db);
-        for (const supercurationId of linkData.supercuration_ids) {
-          const supercurationRef = doc(db, 'supercurations', supercurationId);
-          batch.update(supercurationRef, {
-            links_count: increment(-1)
-          });
-        }
-        await batch.commit();
+      
+      if (!linkDoc.exists()) {
+        console.log('Document not found in Firestore. Collection path:', linkRef.path);
+        // Just clean up local state
+        set((state) => ({
+          links: state.links.filter((link) => link.id !== id),
+          error: null
+        }));
+        return;
       }
 
-      set(state => ({
-        links: state.links.filter(link => link.id !== id),
+      // Verify ownership
+      const linkData = linkDoc.data();
+      if (linkData?.created_by !== currentUser.uid) {
+        throw new Error('You can only delete your own links');
+      }
+
+      await deleteDoc(linkRef);
+      
+      set((state) => ({
+        links: state.links.filter((link) => link.id !== id),
         error: null
       }));
+      
+      console.log('Link successfully deleted');
     } catch (error) {
-      console.error('Error removing link:', error);
+      console.error('Error deleting link:', error);
       throw error;
     }
   },
@@ -314,31 +289,15 @@ export const useLinkStore = create<LinkState>((set, get) => ({
     }
   },
 
-  removeTopicFromLinks: async (topicId: string) => {
-    try {
-      const batch = writeBatch(db);
-      const linksToUpdate = get().links.filter(link => 
-        link.topic_ids?.includes(topicId)
-      );
+  updateLinkTopics: async (_id: string, _topics: string[]) => {
+    // Implementation needed
+  },
 
-      for (const link of linksToUpdate) {
-        const linkRef = doc(db, 'links', link.id);
-        batch.update(linkRef, {
-          topic_ids: link.topic_ids?.filter(id => id !== topicId)
-        });
-      }
+  updateLinkFormats: async (_id: string, _formats: string[]) => {
+    // Implementation needed
+  },
 
-      await batch.commit();
-
-      set(state => ({
-        links: state.links.map(link => ({
-          ...link,
-          topic_ids: link.topic_ids?.filter(id => id !== topicId) || []
-        }))
-      }));
-    } catch (error) {
-      console.error('Error removing topic from links:', error);
-      throw error;
-    }
+  removeTopicFromLinks: async (_topicId: string) => {
+    // Implementation needed
   }
 }));

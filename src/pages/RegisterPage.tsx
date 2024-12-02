@@ -9,7 +9,7 @@ export function RegisterPage() {
     email: '',
     password: '',
     name: '',
-    avatar_url: `https://api.dicebear.com/7.x/avatars/svg?seed=${Math.random()}`
+    avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${Math.random()}`
   });
 
   useEffect(() => {

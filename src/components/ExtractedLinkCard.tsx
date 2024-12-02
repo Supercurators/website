@@ -1,4 +1,3 @@
-import React from 'react';
 import { LinkIcon, CheckSquare, Square } from 'lucide-react';
 import type { ExtractedLink } from '../types';
 

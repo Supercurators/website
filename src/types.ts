@@ -88,3 +88,14 @@ export interface Subscription {
   subscriber_name: string;
   created_at: string;
 }
+
+export interface Topic {
+  id: string;
+  name: string;
+  color: string;
+  count: number;
+}
+
+export interface TopicCategory extends Topic {
+  // Any additional properties specific to TopicCategory
+}

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Plus, ExternalLink, Globe } from 'lucide-react';
+import { Plus, Globe, Pencil, Lock } from 'lucide-react';
 import { useSupercurationStore } from '../store/supercurationStore';
 import { useAuthStore } from '../store/authStore';
 import { useCategoryStore } from '../store/categoryStore';
+import { TopicFilter } from '../components/TopicFilter';
 
 export function SupercurationsPage() {
   const { user } = useAuthStore();
@@ -24,18 +25,58 @@ export function SupercurationsPage() {
   };
 
   // Filter supercurations based on ownership and public status
-  const personalSupercurations = supercurations.filter(s => s.created_by === user?.id);
-  const publicSupercurations = supercurations.filter(s => 
+  const personalSupercurations = supercurations?.filter(s => s.created_by === user?.id) || [];
+  const publicSupercurations = supercurations?.filter(s => 
     s.created_by !== user?.id && s.is_public
-  );
+  ) || [];
+
+  // Add these console logs
+  console.log('All Supercurations:', supercurations);
+  console.log('Personal Supercurations:', personalSupercurations);
+  console.log('Public Supercurations:', publicSupercurations);
 
   // Apply topic filter if selected
   const getFilteredSupercurations = (items: typeof supercurations) => {
-    if (selectedTopics.length === 0) return items;
+    if (!items || selectedTopics.length === 0) return items || [];
     return items.filter(s => 
-      selectedTopics.some(topicId => s.topics.includes(topicId))
+      selectedTopics.some(topicId => s.topics?.includes(topicId))
     );
   };
+
+  // Add this function to calculate topic counts
+  const calculateTopicCounts = () => {
+    const counts: Record<string, number> = {};
+    
+    topics.forEach(topic => {
+      counts[topic.id] = 0;
+    });
+
+    const allSupercurations = [...personalSupercurations, ...publicSupercurations];
+    
+    // Add these console logs
+    console.log('Topics:', topics);
+    console.log('Initial Counts:', counts);
+    
+    allSupercurations.forEach(supercuration => {
+      console.log('Processing supercuration:', {
+        id: supercuration.id,
+        title: supercuration.title,
+        topics: supercuration.topics
+      });
+      
+      supercuration.topics?.forEach(topicId => {
+        if (counts[topicId] !== undefined) {
+          counts[topicId]++;
+        }
+      });
+    });
+
+    console.log('Final Topic Counts:', counts);
+    return counts;
+  };
+
+  // Replace the TopicFilter section with this updated version
+  const topicCounts = calculateTopicCounts();
 
   if (loading) {
     return (
@@ -65,38 +106,20 @@ export function SupercurationsPage() {
           New Supercuration
         </RouterLink>
       </div>
-
-      {/* Topic Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm">
-        <h2 className="text-sm font-medium text-gray-700 mb-3">Filter by Topic</h2>
-        <div className="flex flex-wrap gap-2">
-          {topics.map((topic) => (
-            <button
-              key={topic.id}
-              onClick={() => toggleTopic(topic.id)}
-              className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm ${
-                selectedTopics.includes(topic.id)
-                  ? 'ring-1'
-                  : 'hover:bg-opacity-20'
-              }`}
-              style={{
-                backgroundColor: `${topic.color}15`,
-                color: topic.color,
-                borderColor: selectedTopics.includes(topic.id) ? topic.color : 'transparent'
-              }}
-            >
-              {topic.name}
-            </button>
-          ))}
-        </div>
-      </div>
+      <TopicFilter
+        topics={topics.map(topic => ({
+          ...topic,
+          count: topicCounts[topic.id] || 0
+        }))}
+        selectedTopics={selectedTopics}
+        onTopicToggle={toggleTopic}
+      />
 
       {/* Personal Supercurations */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {getFilteredSupercurations(personalSupercurations).map((supercuration) => (
-          <RouterLink
+          <div
             key={supercuration.id}
-            to={`/supercurations/${supercuration.id}`}
             className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
           >
             {supercuration.thumbnail_url && (
@@ -109,18 +132,45 @@ export function SupercurationsPage() {
             <div className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="font-medium text-lg">{supercuration.title}</h2>
-                {supercuration.is_public && (
-                  <Globe className="w-4 h-4 text-blue-500" />
-                )}
+                <div className="flex items-center gap-1 text-sm">
+                  {supercuration.is_public ? (
+                    <span className="flex items-center gap-1 text-blue-500 px-2 py-0.5 bg-blue-50 rounded-full">
+                      <Globe className="w-3.5 h-3.5" />
+                      Public
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-gray-500 px-2 py-0.5 bg-gray-50 rounded-full">
+                      <Lock className="w-3.5 h-3.5" />
+                      Private
+                    </span>
+                  )}
+                </div>
               </div>
               <p className="text-sm text-gray-500 mb-4 line-clamp-2">
                 {supercuration.description}
               </p>
               <div className="flex items-center justify-between text-sm text-gray-400">
-                <span>{supercuration.links_count} links</span>
-                <ExternalLink className="w-4 h-4" />
+                <span>{supercuration.links_count || 0} links</span>
+                <div className="flex items-center gap-2">
+                  {supercuration.is_public && supercuration.slug && (
+                    <RouterLink
+                      to={`/s/${supercuration.slug}`}
+                      className="flex items-center gap-1 px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                    >
+                      <Globe className="w-4 h-4" />
+                      Preview
+                    </RouterLink>
+                  )}
+                  <RouterLink
+                    to={`/supercurations/${supercuration.id}`}
+                    className="flex items-center gap-1 px-3 py-1.5 text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </RouterLink>
+                </div>
               </div>
-              {supercuration.topics.length > 0 && (
+              {supercuration.topics?.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {supercuration.topics.map((topicId) => {
                     const topic = topics.find(t => t.id === topicId);
@@ -141,7 +191,7 @@ export function SupercurationsPage() {
                 </div>
               )}
             </div>
-          </RouterLink>
+          </div>
         ))}
       </div>
 
@@ -169,10 +219,10 @@ export function SupercurationsPage() {
                     {supercuration.description}
                   </p>
                   <div className="flex items-center justify-between text-sm text-gray-400">
-                    <span>{supercuration.links_count} links</span>
-                    <span>by {supercuration.user.name}</span>
+                    <span>{supercuration.links_count || 0} links</span>
+                    <span>by {supercuration.user?.name}</span>
                   </div>
-                  {supercuration.topics.length > 0 && (
+                  {supercuration.topics?.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {supercuration.topics.map((topicId) => {
                         const topic = topics.find(t => t.id === topicId);

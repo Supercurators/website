@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { initFirebase } from './lib/firebase';
 import { useAuthStore } from './store/authStore';
-import { useLinkStore } from './store/linkStore';
 import { AuthLayout } from './components/AuthLayout';
 import { ProtectedLayout } from './components/ProtectedLayout';
 import { LandingPage } from './pages/LandingPage';
@@ -16,11 +16,11 @@ import { SupercurationsPage } from './pages/SupercurationsPage';
 import { NewSupercurationPage } from './pages/NewSupercurationPage';
 import { SupercurationDetailPage } from './pages/SupercurationDetailPage';
 import { PublicSupercurationPage } from './pages/PublicSupercurationPage';
+import { PublicDirectoryPage } from './pages/PublicDirectoryPage';
 import { OfflineIndicator } from './components/OfflineIndicator';
 
 export function App() {
   const initialize = useAuthStore(state => state.initialize);
-  const setOfflineStatus = useLinkStore(state => state.setOfflineStatus);
 
   useEffect(() => {
     let mounted = true;
@@ -40,40 +40,34 @@ export function App() {
 
     init();
 
-    // Handle online/offline status
-    const handleOnline = () => setOfflineStatus(false);
-    const handleOffline = () => setOfflineStatus(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
     return () => {
       mounted = false;
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
     };
-  }, [initialize, setOfflineStatus]);
+  }, [initialize]);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        </Route>
-        <Route element={<ProtectedLayout />}>
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/saved" element={<SavedPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/supercurations" element={<SupercurationsPage />} />
-          <Route path="/supercurations/new" element={<NewSupercurationPage />} />
-          <Route path="/supercurations/:id" element={<SupercurationDetailPage />} />
-          <Route path="/profile/:id" element={<ProfilePage />} />
-        </Route>
-        <Route path="/s/:slug" element={<PublicSupercurationPage />} />
-        <Route path="/" element={<LandingPage />} />
-      </Routes>
-      <OfflineIndicator />
-    </BrowserRouter>
+    <HelmetProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
+          <Route element={<ProtectedLayout />}>
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/saved" element={<SavedPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/supercurations" element={<SupercurationsPage />} />
+            <Route path="/supercurations/new" element={<NewSupercurationPage />} />
+            <Route path="/supercurations/:id" element={<SupercurationDetailPage />} />
+            <Route path="/profile/:id" element={<ProfilePage />} />
+          </Route>
+          <Route path="/directory" element={<PublicDirectoryPage />} />
+          <Route path="/s/:slug" element={<PublicSupercurationPage />} />
+          <Route path="/" element={<LandingPage />} />
+        </Routes>
+        <OfflineIndicator />
+      </BrowserRouter>
+    </HelmetProvider>
   );
 }

@@ -7,19 +7,6 @@ import { ExtractedLinkCard } from './ExtractedLinkCard';
 import { processImage, extractUrlsFromText, fetchLinkPreviews } from '../lib/urlExtractor';
 import type { ExtractedLink } from '../types';
 
-const FORMATS = [
-  { emoji: '📝', label: 'Article' },
-  { emoji: '📺', label: 'Video' },
-  { emoji: '🎧', label: 'Podcast' },
-  { emoji: '📰', label: 'Newsletter' },
-  { emoji: '🛠️', label: 'Tool' },
-  { emoji: '📚', label: 'Tutorial' },
-  { emoji: '🎨', label: 'Design' },
-  { emoji: '🤖', label: 'AI' },
-  { emoji: '💻', label: 'Dev' },
-  { emoji: '🔗', label: 'Other' }
-];
-
 export function AIUrlExtractor() {
   const { supercurations } = useSupercurationStore();
   const { addLink } = useLinkStore();
@@ -212,29 +199,6 @@ export function AIUrlExtractor() {
                 >
                   {loading ? 'Sharing...' : `Share Selected (${selectedCount})`}
                 </button>
-              </div>
-
-              {/* Format Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Format for All Selected Items
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {FORMATS.map(({ emoji, label }) => (
-                    <button
-                      key={emoji}
-                      onClick={() => setSelectedFormat(selectedFormat === emoji ? null : emoji)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
-                        selectedFormat === emoji
-                          ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-700'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <span>{emoji}</span>
-                      {label}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Supercuration Selection */}

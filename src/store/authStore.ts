@@ -39,8 +39,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   initialize: async () => {
     try {
-      // Enable persistent auth state
-      await setPersistence(auth, browserLocalPersistence);
+      // Add error handling for persistence
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (persistenceError) {
+        console.warn('Failed to set persistence:', persistenceError);
+        // Continue anyway as this isn't critical
+      }
       
       return new Promise<void>((resolve) => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -56,7 +61,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                   id: firebaseUser.uid,
                   email: firebaseUser.email!,
                   name: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
-                  avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avatars/svg?seed=${firebaseUser.email}`,
+                  avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${firebaseUser.email}`,
                   created_at: new Date().toISOString()
                 };
                 
@@ -67,18 +72,24 @@ export const useAuthStore = create<AuthState>((set) => ({
               set({ user: null, initialized: true });
             }
           } catch (error) {
-            console.error('Error fetching user data:', error);
-            // Don't set error state here to avoid blocking the app
-            set({ user: null, initialized: true });
+            console.error('Error during auth state change:', error);
+            set({ user: null, initialized: true, error: 'Authentication failed' });
           } finally {
             unsubscribe();
             resolve();
           }
         });
+
+        // Add timeout to prevent hanging
+        setTimeout(() => {
+          unsubscribe();
+          set({ initialized: true, error: 'Authentication timed out' });
+          resolve();
+        }, 10000);
       });
     } catch (error) {
-      console.error('Auth initialization error:', error);
-      set({ user: null, initialized: true });
+      console.error('Error during initialization:', error);
+      set({ initialized: true, error: 'Failed to initialize auth' });
     }
   },
 
@@ -99,7 +110,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           id: firebaseUser.uid,
           email: firebaseUser.email!,
           name: firebaseUser.displayName || email.split('@')[0],
-          avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avatars/svg?seed=${email}`,
+          avatar_url: firebaseUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${email}`,
           created_at: new Date().toISOString()
         };
         await setDoc(doc(db, 'users', firebaseUser.uid), userData);
@@ -134,14 +145,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Update Firebase auth profile
       await updateFirebaseProfile(firebaseUser, {
         displayName: data.name,
-        photoURL: data.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${data.email}`
+        photoURL: data.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${data.email}`
       });
 
       const userData: User = {
         id: firebaseUser.uid,
         email: data.email,
         name: data.name,
-        avatar_url: data.avatar_url || `https://api.dicebear.com/7.x/avatars/svg?seed=${data.email}`,
+        avatar_url: data.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${data.email}`,
         created_at: new Date().toISOString()
       };
 

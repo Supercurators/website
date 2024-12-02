@@ -1,25 +1,21 @@
-import type { Supercuration, TagCategory, Link } from '../types';
+import type { Supercuration, TagCategory } from '../types';
 
 const COLORS = [
   '#2563eb', '#dc2626', '#059669', '#7c3aed', '#db2777',
   '#ea580c', '#ca8a04', '#4f46e5', '#0891b2', '#be123c'
 ];
 
-interface AnalysisInput {
-  title: string;
-  description: string;
-  tagCategories: TagCategory[];
+interface SupercurationWithLinks extends Supercuration {
+  links?: Array<{
+    title: string;
+    description: string;
+  }>;
 }
 
-export async function suggestTagCategories(supercuration: Supercuration, links: Link[]): Promise<TagCategory[]> {
+export async function suggestTagCategories(supercuration: SupercurationWithLinks): Promise<TagCategory[]> {
   // Analyze links in the supercuration
-  const linkTitles = links.map(link => link.title) || [];
-  const linkDescriptions = links.map(link => link.description) || [];
-
-  // Extract common themes and topics
-  const themes = new Set<string>();
-  const contentTypes = new Set<string>();
-  const technologies = new Set<string>();
+  const linkTitles = supercuration.links?.map(link => link.title) || [];
+  const linkDescriptions = supercuration.links?.map(link => link.description) || [];
 
   // Simple keyword extraction (in a real app, use NLP or AI)
   const keywords = [...linkTitles, ...linkDescriptions].join(' ')

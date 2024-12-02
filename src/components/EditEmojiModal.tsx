@@ -14,9 +14,6 @@ export function EditEmojiModal({ isOpen, onClose, linkId }: EditEmojiModalProps)
   const { topics, addTopic } = useCategoryStore();
   const link = links.find(l => l.id === linkId);
   
-  const [selectedEmojis, setSelectedEmojis] = useState<string[]>(
-    link?.emoji_tags || []
-  );
   const [selectedTopics, setSelectedTopics] = useState<string[]>(
     link?.topic_ids || []
   );
@@ -24,14 +21,6 @@ export function EditEmojiModal({ isOpen, onClose, linkId }: EditEmojiModalProps)
   const [newTopic, setNewTopic] = useState({ name: '', color: '#2563eb' });
 
   if (!isOpen || !link) return null;
-
-  const toggleEmoji = (emoji: string) => {
-    setSelectedEmojis(prev =>
-      prev.includes(emoji)
-        ? prev.filter(e => e !== emoji)
-        : [emoji]
-    );
-  };
 
   const toggleTopic = (topicId: string) => {
     setSelectedTopics(prev =>
@@ -52,7 +41,6 @@ export function EditEmojiModal({ isOpen, onClose, linkId }: EditEmojiModalProps)
 
   const handleSave = () => {
     updateLink(link.id, {
-      emoji_tags: selectedEmojis,
       topic_ids: selectedTopics
     });
     onClose();

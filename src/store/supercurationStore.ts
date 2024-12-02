@@ -25,13 +25,14 @@ interface SupercurationState {
     thumbnail_url?: string;
     topics: string[];
     tagCategories?: TagCategory[];
+    slug?: string;
     is_public?: boolean;
   }) => Promise<Supercuration>;
   updateSupercuration: (id: string, data: Partial<Supercuration>) => Promise<void>;
   removeSupercuration: (id: string) => Promise<void>;
 }
 
-export const useSupercurationStore = create<SupercurationState>((set, get) => ({
+export const useSupercurationStore = create<SupercurationState>((set) => ({
   supercurations: [],
   loading: false,
   error: null,
@@ -72,7 +73,7 @@ export const useSupercurationStore = create<SupercurationState>((set, get) => ({
       const supercurationData = sanitizeForFirestore({
         ...data,
         created_by: currentUser.uid,
-        created_at: new Date().toISOString(),
+        created_at: serverTimestamp() as unknown as string,
         links_count: 0,
         tagCategories: data.tagCategories || [],
         user: {

@@ -1,5 +1,7 @@
 import { serverTimestamp } from 'firebase/firestore';
 import type { Link, Supercuration } from '../types';
+import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 export function sanitizeForFirestore(data: Partial<Link | Supercuration>) {
   // Remove undefined values and empty arrays
@@ -26,4 +28,39 @@ export function validateLinkData(data: Partial<Link>): boolean {
     data.description &&
     typeof data.description === 'string'
   );
+}
+
+export async function cleanupInvalidLinks() {
+  try {
+    // Query for documents where id is null, undefined, or empty string
+    const linksRef = collection(db, 'links');
+    const invalidLinksQuery = query(linksRef, 
+      where('id', '==', null)
+    );
+
+    const querySnapshot = await getDocs(invalidLinksQuery);
+    
+    console.log(`Found ${querySnapshot.size} invalid links`);
+    
+    // Delete each invalid document
+    const deletePromises = querySnapshot.docs.map(async (doc) => {
+      console.log('Deleting invalid link with doc ID:', doc.id);
+      try {
+        await deleteDoc(doc.ref);
+        return true;
+      } catch (error) {
+        console.error('Error deleting doc:', doc.id, error);
+        return false;
+      }
+    });
+
+    const results = await Promise.all(deletePromises);
+    const deletedCount = results.filter(Boolean).length;
+    
+    console.log(`Successfully deleted ${deletedCount} invalid links`);
+    return deletedCount;
+  } catch (error) {
+    console.error('Error cleaning up invalid links:', error);
+    throw error;
+  }
 }

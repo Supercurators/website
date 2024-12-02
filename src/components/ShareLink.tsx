@@ -5,13 +5,6 @@ import { useState } from 'react';
 export function ShareLink() {
   const { topics } = useCategoryStore();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
-
-  const toggleCategory = (id: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(id) ? prev.filter(catId => catId !== id) : [...prev, id]
-    );
-  };
 
   return (
     <div className="flex items-center gap-2">
@@ -19,7 +12,14 @@ export function ShareLink() {
         {topics.map((category) => (
           <button
             key={category.id}
-            onClick={() => toggleCategory(category.id)}
+            onClick={() => {
+              const isSelected = selectedCategories.includes(category.id);
+              setSelectedCategories(
+                isSelected
+                  ? selectedCategories.filter(id => id !== category.id)
+                  : [...selectedCategories, category.id]
+              );
+            }}
             className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
               selectedCategories.includes(category.id)
                 ? 'ring-1'
@@ -36,7 +36,6 @@ export function ShareLink() {
         ))}
       </div>
       <button
-        onClick={() => setShowCategoryManager(true)}
         className="p-2 text-gray-400 hover:text-gray-600"
       >
         <Tag className="w-5 h-5" />

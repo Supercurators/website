@@ -3,12 +3,13 @@ import { LinkIcon, Loader } from 'lucide-react';
 import { getLinkPreview } from '../lib/linkPreview';
 
 interface LinkPreviewInputProps {
-  onShare: (preview: {
+  onShare: (data: {
     url: string;
     title: string;
     description: string;
     thumbnail_url?: string;
   }) => void;
+  onCancel?: () => void;
 }
 
 export function LinkPreviewInput({ onShare }: LinkPreviewInputProps) {

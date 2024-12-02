@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { X, Upload, Image as ImageIcon, Link as LinkIcon, Globe, Lock, Wand2 } from 'lucide-react';
+import { X, Globe, Lock, Wand2 } from 'lucide-react';
 import { useSupercurationStore } from '../store/supercurationStore';
-import { useCategoryStore } from '../store/categoryStore';
 import { TagCategoryManager } from './TagCategoryManager';
 import { suggestTagCategories } from '../lib/tagSuggestions';
-import type { Supercuration, TagCategory, Link } from '../types';
+import type { Supercuration } from '../types';
 
 interface EditSupercurationModalProps {
   supercuration: Supercuration;
@@ -13,10 +12,8 @@ interface EditSupercurationModalProps {
 
 export function EditSupercurationModal({ supercuration, onClose }: EditSupercurationModalProps) {
   const { updateSupercuration } = useSupercurationStore();
-  const { topics } = useCategoryStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageType, setImageType] = useState<'url' | 'upload'>('url');
   const [showTagManager, setShowTagManager] = useState(false);
   const [formData, setFormData] = useState({
     title: supercuration.title,
@@ -27,7 +24,6 @@ export function EditSupercurationModal({ supercuration, onClose }: EditSupercura
     slug: supercuration.slug || '',
     tagCategories: supercuration.tagCategories || []
   });
-  const [links, setLinks] = useState<Link[]>([]);
 
   const generateSlug = (title: string) => {
     return title
@@ -47,7 +43,7 @@ export function EditSupercurationModal({ supercuration, onClose }: EditSupercura
   const handleSuggestTags = async () => {
     try {
       setLoading(true);
-      const suggestions = await suggestTagCategories(supercuration, links);
+      const suggestions = await suggestTagCategories(supercuration);
       setFormData(prev => ({
         ...prev,
         tagCategories: suggestions

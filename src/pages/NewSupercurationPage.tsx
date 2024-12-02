@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Image as ImageIcon, Link as LinkIcon, Globe, Lock } from 'lucide-react';
+import { Lock, Globe } from 'lucide-react';
 import { useSupercurationStore } from '../store/supercurationStore';
 import { useCategoryStore } from '../store/categoryStore';
 
@@ -10,7 +10,6 @@ export function NewSupercurationPage() {
   const { topics } = useCategoryStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageType, setImageType] = useState<'url' | 'upload'>('url');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -19,8 +18,6 @@ export function NewSupercurationPage() {
     is_public: false,
     slug: ''
   });
-
-  // ... existing image upload and topic toggle functions ...
 
   const generateSlug = (title: string) => {
     return title
@@ -50,11 +47,7 @@ export function NewSupercurationPage() {
 
       await addSupercuration({
         ...formData,
-        title: formData.title,
-        description: formData.description,
-        thumbnail_url: formData.thumbnail_url,
-        topics: formData.topics,
-        is_public: formData.is_public
+        slug: formData.is_public ? formData.slug : undefined
       });
       navigate('/supercurations');
     } catch (err) {
@@ -66,11 +59,15 @@ export function NewSupercurationPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* ... existing header ... */}
+    <div className="max-w-2xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6">Create New Supercuration</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* ... existing error display ... */}
+      <form onSubmit={handleSubmit} className="space-y-6 bg-white rounded-lg p-6 shadow-sm">
+        {error && (
+          <div className="p-4 text-sm text-red-600 bg-red-50 rounded-lg">
+            {error}
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -86,7 +83,19 @@ export function NewSupercurationPage() {
           />
         </div>
 
-        {/* Visibility Toggle */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            rows={3}
+            className="w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Describe what this supercuration is about..."
+          />
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Visibility
@@ -139,7 +148,54 @@ export function NewSupercurationPage() {
           </div>
         )}
 
-        {/* ... rest of the existing form fields ... */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Topics
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {topics.map((topic) => (
+              <button
+                key={topic.id}
+                type="button"
+                onClick={() => setFormData(prev => ({
+                  ...prev,
+                  topics: prev.topics.includes(topic.id)
+                    ? prev.topics.filter(id => id !== topic.id)
+                    : [...prev.topics, topic.id]
+                }))}
+                className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm ${
+                  formData.topics.includes(topic.id)
+                    ? 'ring-1'
+                    : 'hover:bg-opacity-20'
+                }`}
+                style={{
+                  backgroundColor: `${topic.color}15`,
+                  color: topic.color,
+                  borderColor: formData.topics.includes(topic.id) ? topic.color : 'transparent'
+                }}
+              >
+                {topic.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/supercurations')}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Creating...' : 'Create Supercuration'}
+          </button>
+        </div>
       </form>
     </div>
   );

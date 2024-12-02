@@ -7,7 +7,7 @@ service cloud.firestore {
     }
     
     match /links/{linkId} {
-      allow read: if true;
+      allow read, listen: if true;
       allow create: if request.auth != null;
       allow update: if request.auth != null && (
         resource.data.created_by == request.auth.uid ||

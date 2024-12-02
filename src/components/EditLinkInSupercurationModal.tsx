@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { X, Tag } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useLinkStore } from '../store/linkStore';
 import { useSupercurationStore } from '../store/supercurationStore';
-import type { Link, TagCategory } from '../types';
+import type { Link } from '../types';
 
 interface EditLinkInSupercurationModalProps {
   link: Link;

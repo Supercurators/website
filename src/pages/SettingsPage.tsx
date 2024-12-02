@@ -73,7 +73,7 @@ export function SettingsPage() {
           // Prepare row data with sanitization
           const rowData = [
             sanitizeForCSV(link.title),
-            sanitizeForCSV(link.url),
+            sanitizeForCSV(link.url || ''),
             sanitizeForCSV(link.description),
             formatDate(link.created_at),
             (link.emoji_tags || []).join(';'),
