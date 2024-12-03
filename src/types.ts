@@ -38,6 +38,7 @@ export interface Supercuration {
   is_public: boolean;
   slug?: string;
   tagCategories: TagCategory[];
+  subscribers?: string[];
 }
 
 export interface Link {

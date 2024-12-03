@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Grid, List, Lock, ExternalLink } from 'lucide-react';
+import { Grid, List, Lock, ExternalLink, X, Filter, Clock, ArrowUpDown } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { DirectoryFilters } from '../components/directory/DirectoryFilters';
@@ -16,6 +16,30 @@ export function PublicSupercurationPage() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  const [formatFilter, setFormatFilter] = useState<string | null>(null);
+
+  const navigate = useNavigate();
+
+  const SORT_OPTIONS = [
+    { value: 'newest', label: 'Newest First' },
+    { value: 'oldest', label: 'Oldest First' },
+    { value: 'most_liked', label: 'Most Liked' },
+  ];
+  const FORMATS = [
+    { emoji: '📝', label: 'Article' },
+    { emoji: '📺', label: 'Video' },
+    { emoji: '🎧', label: 'Podcast' },
+    { emoji: '📰', label: 'Newsletter' },
+    { emoji: '🛠️', label: 'Tool' },
+    { emoji: '📚', label: 'Tutorial' },
+    { emoji: '🎨', label: 'Design' },
+    { emoji: '🤖', label: 'AI' },
+    { emoji: '💻', label: 'Dev' },
+    { emoji: '🔗', label: 'Other' }
+  ];
 
   useEffect(() => {
     console.log('Current slug param:', slug);
@@ -80,10 +104,77 @@ export function PublicSupercurationPage() {
 
   const filteredLinks = selectedFilters.length > 0
     ? links.filter(link => {
-        const linkTags = link.supercuration_tags?.[supercuration?.id || ''] || [];
-        return selectedFilters.some(filter => linkTags.includes(filter));
+        return selectedFilters.some(filter => {
+          // Check supercuration tags
+          const linkTags = link.supercuration_tags?.[supercuration?.id || ''] || [];
+          if (linkTags.includes(filter)) return true;
+          
+          // Check topic_ids
+          if (link.topic_ids?.includes(filter)) return true;
+          
+          // Check emoji_tags
+          if (link.emoji_tags?.includes(filter)) return true;
+          
+          return false;
+        });
       })
     : links;
+
+  const getFilteredLinks = () => {
+    let filtered = [...filteredLinks];
+
+    // Filter by format
+    if (formatFilter) {
+      filtered = filtered.filter(link => {
+        if (!Array.isArray(link.emoji_tags)) {
+          return false;
+        }
+        return link.emoji_tags.includes(formatFilter);
+      });
+    }
+
+    // Filter by time
+    if (timeFilter !== 'all') {
+      const now = new Date();
+      switch (timeFilter) {
+        case 'today':
+          filtered = filtered.filter(link => {
+            const date = new Date(link.created_at);
+            return date.toDateString() === now.toDateString();
+          });
+          break;
+        case 'week':
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          filtered = filtered.filter(link => 
+            new Date(link.created_at) >= weekAgo
+          );
+          break;
+        case 'month':
+          const monthAgo = new Date();
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+          filtered = filtered.filter(link => 
+            new Date(link.created_at) >= monthAgo
+          );
+          break;
+      }
+    }
+
+    // Sort links
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'most_liked':
+          return (b.likes || 0) - (a.likes || 0);
+        case 'newest':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
+
+    return filtered;
+  };
 
   if (loading) {
     return (
@@ -157,11 +248,25 @@ export function PublicSupercurationPage() {
               </div>
             </div>
 
-            <div className="lg:pl-12">
+            <div className="lg:pl-12 space-y-6">
               <NewsletterSignup 
                 title={`Subscribe to ${supercuration.title}`}
                 description="Get notified when new resources are added to this collection"
+                supercurationId={supercuration.id}
               />
+              
+              <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm">
+                <h3 className="text-lg font-medium mb-2">Want to create your own collection?</h3>
+                <p className="text-gray-300 mb-4">
+                  Join Supercurators to create and share your own curated collections of resources.
+                </p>
+                <button
+                  onClick={() => navigate('/home')}
+                  className="w-full bg-white text-gray-900 hover:bg-gray-100 py-2.5 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Sign up or log in
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -169,17 +274,96 @@ export function PublicSupercurationPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex gap-8">
-          {/* Left Sidebar */}
-          <div className="w-64 flex-shrink-0">
-            <DirectoryFilters onFilterChange={setSelectedFilters} />
+        <div className="lg:flex lg:gap-8">
+          {/* Desktop Filters Sidebar */}
+          <div className="hidden lg:block w-64 flex-shrink-0">
+            <DirectoryFilters 
+              onFilterChange={setSelectedFilters} 
+              supercuration={supercuration}
+              links={links}
+            />
           </div>
 
-          {/* Main Content */}
           <div className="flex-1">
+            {/* Filter Bar */}
+            <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <select 
+                      value={timeFilter}
+                      onChange={(e) => setTimeFilter(e.target.value)}
+                      className="appearance-none pl-8 pr-4 py-1.5 bg-white border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All time</option>
+                      <option value="today">Today</option>
+                      <option value="week">This week</option>
+                      <option value="month">This month</option>
+                    </select>
+                    <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  </div>
+
+                  <div className="relative">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="appearance-none pl-8 pr-4 py-1.5 bg-white border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {SORT_OPTIONS.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  </div>
+                </div>
+
+                {/* Mobile Filter Button */}
+                <div className="lg:hidden">
+                  <button
+                    onClick={() => setIsFilterDrawerOpen(true)}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-white border rounded-full text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Filter className="w-4 h-4" />
+                    Filters
+                  </button>
+                </div>
+              </div>
+
+              {/* Format Filter */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setFormatFilter(null)}
+                  className={`px-3 py-1.5 rounded-full text-sm ${
+                    !formatFilter
+                      ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-700'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  All Formats
+                </button>
+                {FORMATS.map(({ emoji, label }) => (
+                  <button
+                    key={emoji}
+                    onClick={() => setFormatFilter(formatFilter === emoji ? null : emoji)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${
+                      formatFilter === emoji
+                        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-700'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span>{emoji}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Main Content */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-medium text-gray-900">
-                {filteredLinks.length} Resources
+                {getFilteredLinks().length} Resources
               </h2>
               <div className="flex items-center gap-2 border rounded-full p-1 bg-white">
                 <button
@@ -207,7 +391,7 @@ export function PublicSupercurationPage() {
 
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredLinks.map((link) => (
+                {getFilteredLinks().map((link) => (
                   <a
                     key={link.id}
                     href={link.url}
@@ -260,7 +444,7 @@ export function PublicSupercurationPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredLinks.map((link) => (
+                {getFilteredLinks().map((link) => (
                   <a
                     key={link.id}
                     href={link.url}
@@ -317,6 +501,37 @@ export function PublicSupercurationPage() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Filter Drawer */}
+      {isFilterDrawerOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setIsFilterDrawerOpen(false)}
+          />
+          
+          {/* Drawer */}
+          <div className="fixed inset-y-0 right-0 w-[300px] bg-white shadow-xl">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium">Filters</h2>
+                <button
+                  onClick={() => setIsFilterDrawerOpen(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <DirectoryFilters 
+                onFilterChange={setSelectedFilters} 
+                supercuration={supercuration}
+                links={links}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
