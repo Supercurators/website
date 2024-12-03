@@ -205,7 +205,7 @@ export function ProfilePage() {
             {supercurations.map((supercuration) => (
               <Link
                 key={supercuration.id}
-                to={`/public/${supercuration.slug}`}
+                to={`/supercurations/public/${supercuration.slug}`}
                 className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
               >
                 {supercuration.thumbnail_url && (
@@ -233,7 +233,7 @@ export function ProfilePage() {
             {supercurations.map((supercuration) => (
               <Link
                 key={supercuration.id}
-                to={`/public/${supercuration.slug}`}
+                to={`/supercurations/public/${supercuration.slug}`}
                 className="block bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
               >
                 <div className="p-4">
