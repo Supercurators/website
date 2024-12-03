@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Grid, List, Lock, ExternalLink, X, Filter, Clock, ArrowUpDown } from 'lucide-react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { DirectoryFilters } from '../components/directory/DirectoryFilters';
 import { NewsletterSignup } from '../components/NewsletterSignup';
@@ -21,6 +21,7 @@ export function PublicSupercurationPage() {
   const [sortBy, setSortBy] = useState('newest');
   const [formatFilter, setFormatFilter] = useState<string | null>(null);
   const [filteredLinks, setFilteredLinks] = useState<LinkType[]>([]);
+  const [userData, setUserData] = useState<{ name: string; avatar_url: string; bio?: string } | null>(null);
 
   const navigate = useNavigate();
 
@@ -110,6 +111,28 @@ export function PublicSupercurationPage() {
 
     fetchSupercuration();
   }, [slug]);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!supercuration?.user?.id) return;
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', supercuration.user.id));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserData({
+            name: userData.name,
+            avatar_url: userData.avatar_url,
+            bio: userData.bio
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+      }
+    };
+
+    fetchUserData();
+  }, [supercuration?.user?.id]);
 
   useEffect(() => {
     const newFiltered = getFilteredLinks();
@@ -245,25 +268,29 @@ export function PublicSupercurationPage() {
               <p className="text-xl text-gray-300 mb-8">{supercuration.description}</p>
 
               <div className="flex items-center gap-4">
-                <img
-                  src={supercuration.user.avatar_url}
-                  alt={supercuration.user.name}
-                  className="w-12 h-12 rounded-full"
-                />
-                <div>
-                  <h2 className="font-medium">
-                    Curated by{' '}
-                    <Link 
-                      to={`/profile/${supercuration.user.id}`}
-                      className="text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      {supercuration.user.name}
-                    </Link>
-                  </h2>
-                  {supercuration.user.bio && (
-                    <p className="text-sm text-gray-400">{supercuration.user.bio}</p>
-                  )}
-                </div>
+                {userData && (
+                  <>
+                    <img
+                      src={userData.avatar_url}
+                      alt={userData.name}
+                      className="w-12 h-12 rounded-full"
+                    />
+                    <div>
+                      <h2 className="font-medium">
+                        Curated by{' '}
+                        <Link 
+                          to={`/profile/${supercuration.user.id}`}
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          {userData.name}
+                        </Link>
+                      </h2>
+                      {userData.bio && (
+                        <p className="text-sm text-gray-400">{userData.bio}</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
