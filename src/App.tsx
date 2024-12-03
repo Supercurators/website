@@ -19,6 +19,7 @@ import { PublicSupercurationPage } from './pages/PublicSupercurationPage';
 import { PublicDirectoryPage } from './pages/PublicDirectoryPage';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PublicLayout } from './components/PublicLayout';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 export function App() {
   const initialize = useAuthStore(state => state.initialize);
@@ -70,6 +71,8 @@ export function App() {
             <Route path="/supercurations/:id" element={<SupercurationDetailPage />} />
             <Route path="/profile/:id" element={<ProfilePage />} />
           </Route>
+
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
         <OfflineIndicator />
       </BrowserRouter>
