@@ -641,70 +641,74 @@ export function SupercurationDetailPage() {
       )}
 
       {showAddResource && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Add New Resource</h2>
-              <button
-                onClick={() => setShowAddResource(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Add New Resource</h2>
+                <button
+                  onClick={() => setShowAddResource(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-medium text-gray-900 mb-4">Add from your saved posts</h3>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {isFetchingSaved ? (
-                    <div className="flex justify-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                    </div>
-                  ) : savedLinks.length === 0 ? (
-                    <p className="text-center text-gray-500 py-4">
-                      No saved links available to add
-                    </p>
-                  ) : (
-                    savedLinks.map((link) => (
-                      <button
-                        key={link.id}
-                        onClick={() => handleAddResource(link)}
-                        className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 text-left group"
-                      >
-                        {link.thumbnail_url && (
-                          <img
-                            src={link.thumbnail_url}
-                            alt=""
-                            className="w-16 h-16 rounded object-cover flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 group-hover:text-blue-600">
-                            {link.title}
-                          </h4>
-                          <p className="text-sm text-gray-500 line-clamp-2">
-                            {link.description}
-                          </p>
-                        </div>
-                      </button>
-                    ))
-                  )}
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-4">Add from your saved posts</h3>
+                  <div className="space-y-3">
+                    {isFetchingSaved ? (
+                      <div className="flex justify-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      </div>
+                    ) : savedLinks.length === 0 ? (
+                      <p className="text-center text-gray-500 py-4">
+                        No saved links available to add
+                      </p>
+                    ) : (
+                      savedLinks.map((link) => (
+                        <button
+                          key={link.id}
+                          onClick={() => handleAddResource(link)}
+                          className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 text-left group"
+                        >
+                          {link.thumbnail_url && (
+                            <img
+                              src={link.thumbnail_url}
+                              alt=""
+                              className="w-16 h-16 rounded object-cover flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-gray-900 group-hover:text-blue-600">
+                              {link.title}
+                            </h4>
+                            <p className="text-sm text-gray-500 line-clamp-2">
+                              {link.description}
+                            </p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">or</span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">or</span>
-                </div>
-              </div>
 
-              <div>
-                <h3 className="font-medium text-gray-900 mb-4">Add a new link</h3>
-                <ShareForm />
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-4">Add a new link</h3>
+                  <ShareForm />
+                </div>
               </div>
             </div>
           </div>
@@ -713,25 +717,27 @@ export function SupercurationDetailPage() {
 
       {/* Delete Resource Confirmation Modal */}
       {deletingResourceId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-semibold mb-4">Remove Resource</h2>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to remove this resource from the supercuration?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeletingResourceId(null)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDeleteResource(deletingResourceId)}
-                className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
-              >
-                Remove
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full mx-4 max-h-[90vh] flex flex-col">
+            <div className="p-6 overflow-y-auto">
+              <h2 className="text-xl font-semibold mb-4">Remove Resource</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to remove this resource from the supercuration?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setDeletingResourceId(null)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteResource(deletingResourceId)}
+                  className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -739,25 +745,27 @@ export function SupercurationDetailPage() {
 
       {/* Delete Supercuration Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-semibold mb-4">Delete Supercuration</h2>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete this supercuration? This will permanently delete all associated data and cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteSupercuration}
-                className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
-              >
-                Delete
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full mx-4 max-h-[90vh] flex flex-col">
+            <div className="p-6 overflow-y-auto">
+              <h2 className="text-xl font-semibold mb-4">Delete Supercuration</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this supercuration? This will permanently delete all associated data and cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteSupercuration}
+                  className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
