@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 // User types
 export interface User {
   id: string;
@@ -25,7 +27,7 @@ export interface Supercuration {
   description: string;
   thumbnail_url?: string;
   created_by: string;
-  created_at: string;
+  created_at: Timestamp | string;
   user: {
     id: string;
     name: string;

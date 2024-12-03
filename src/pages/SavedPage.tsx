@@ -3,13 +3,14 @@ import { ExternalLink, Heart, Star, Clock, Tag, Edit2, Trash2 } from 'lucide-rea
 import { useLinkStore } from '../store/linkStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { auth, db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs, DocumentData } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { TopicManager } from '../components/TopicManager';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { TopicFilter } from '../components/TopicFilter';
 import { ShareForm } from '../components/ShareForm';
 import { EmojiTagSelector } from '../components/EmojiTagSelector';
 import type { Link, Topic } from '../types';
+import { toast } from 'react-hot-toast';
 
 interface FirestoreLink {
   url: string;
@@ -36,7 +37,7 @@ export function SavedPage() {
     color: topic.color,
     count: 0,
   })) as Topic[];
-  const { toggleLike, removeLink } = useLinkStore();
+  const { toggleLike, removeLink, updateLink } = useLinkStore();
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -221,27 +222,43 @@ export function SavedPage() {
       thumbnail_url?: string;
     }
   ) => {
+    if (!editingLink?.id) return;
+
     try {
-      // Immediately update the link in the current state
-      const updatedLink: Link = {
-        ...links.find(l => l.id === editingLink?.id)!,
+      // Prepare the update data
+      const updateData = {
         ...postData,
         emoji_tags: selectedEmojis,
         topic_ids: selectedTopics,
         is_original_content: isOriginal,
+        updated_at: new Date().toISOString(),
       };
 
-      setLinks(prevLinks => 
-        prevLinks.map(link => 
-          link.id === updatedLink.id ? updatedLink : link
-        )
-      );
+      // Update in Firestore
+      const linkRef = doc(db, 'links', editingLink.id);
+      await updateDoc(linkRef, updateData);
 
-      // Then refresh the data from server
+      // Update the link in the store
+      await updateLink(editingLink.id, updateData);
+
+      // Update local state
+      setLinks(prev => prev.map(link =>
+        link.id === editingLink.id
+          ? {
+              ...link,
+              ...updateData,
+            }
+          : link
+      ));
+
+      toast.success('Resource updated successfully');
+      setEditingLink(null);
+
+      // Refresh the data from server
       if (linksQueryRef.current) {
         const querySnapshot = await getDocs(linksQueryRef.current);
         const fetchedLinks: Link[] = querySnapshot.docs.map(doc => {
-          const data = doc.data() as DocumentData;
+          const data = doc.data() as FirestoreLink;
           return {
             id: doc.id,
             url: data.url,
@@ -261,13 +278,11 @@ export function SavedPage() {
             reposts_count: data.reposts_count || 0
           };
         });
-        
         setLinks(fetchedLinks);
       }
-      
-      setEditingLink(null);
-    } catch (error) {
-      console.error('Error refreshing links after edit:', error);
+    } catch (err) {
+      console.error('Error updating resource:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to update resource');
     }
   };
 

@@ -2,10 +2,19 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Globe, MapPin, Clock, Mail, Grid, List } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import type { User, Supercuration } from '../types';
 import { useAuthStore } from '../store/authStore';
 import { useSubscriptionStore } from '../store/subscriptionStore';
+
+function formatDate(date: Timestamp | string) {
+  const dateObj = date instanceof Timestamp ? date.toDate() : new Date(date);
+  return dateObj.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
 
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -149,7 +158,7 @@ export function ProfilePage() {
                 )}
                 <div className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  Joined {new Date(user.created_at).toLocaleDateString()}
+                  Joined {formatDate(user.created_at)}
                 </div>
               </div>
             </div>
@@ -213,7 +222,7 @@ export function ProfilePage() {
                   </p>
                   <div className="flex items-center justify-between text-sm text-gray-400">
                     <span>{supercuration.links_count || 0} links</span>
-                    <span>{new Date(supercuration.created_at).toLocaleDateString()}</span>
+                    <span>{formatDate(supercuration.created_at)}</span>
                   </div>
                 </div>
               </Link>
@@ -234,7 +243,7 @@ export function ProfilePage() {
                   </p>
                   <div className="flex items-center justify-between text-sm text-gray-400">
                     <span>{supercuration.links_count || 0} links</span>
-                    <span>{new Date(supercuration.created_at).toLocaleDateString()}</span>
+                    <span>{formatDate(supercuration.created_at)}</span>
                   </div>
                 </div>
               </Link>

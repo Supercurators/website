@@ -2,11 +2,20 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Grid, List, Lock, ExternalLink, X, Filter, Clock, ArrowUpDown } from 'lucide-react';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { DirectoryFilters } from '../components/directory/DirectoryFilters';
 import { NewsletterSignup } from '../components/NewsletterSignup';
 import type { Supercuration, Link as LinkType } from '../types';
+
+function formatDate(date: Timestamp | string) {
+  const dateObj = date instanceof Timestamp ? date.toDate() : new Date(date);
+  return dateObj.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
 
 export function PublicSupercurationPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -146,7 +155,8 @@ export function PublicSupercurationPage() {
       id: link.id,
       title: link.title,
       url: link.url,
-      created_at: link.created_at
+      created_at: link.created_at,
+      supercuration_ids: link.supercuration_ids
     })));
 
     // Start with all links
@@ -262,11 +272,7 @@ export function PublicSupercurationPage() {
                   </span>
                 )}
                 <span className="text-sm text-gray-400">
-                  Created on {supercuration.created_at?.toDate().toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
+                  Created on {formatDate(supercuration.created_at)}
                 </span>
               </div>
 
