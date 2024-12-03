@@ -18,6 +18,7 @@ import { SupercurationDetailPage } from './pages/SupercurationDetailPage';
 import { PublicSupercurationPage } from './pages/PublicSupercurationPage';
 import { PublicDirectoryPage } from './pages/PublicDirectoryPage';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { PublicLayout } from './components/PublicLayout';
 
 export function App() {
   const initialize = useAuthStore(state => state.initialize);
@@ -49,9 +50,11 @@ export function App() {
     <HelmetProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/directory" element={<PublicDirectoryPage />} />
-          <Route path="/s/:slug" element={<PublicSupercurationPage />} />
-          <Route path="/" element={<LandingPage />} />
+          <Route element={<PublicLayout />}>
+            <Route path="/directory" element={<PublicDirectoryPage />} />
+            <Route path="/supercurations/public/:slug" element={<PublicSupercurationPage />} />
+            <Route path="/" element={<LandingPage />} />
+          </Route>
 
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
