@@ -7,6 +7,7 @@ import { db } from '../lib/firebase';
 import { DirectoryFilters } from '../components/directory/DirectoryFilters';
 import { NewsletterSignup } from '../components/NewsletterSignup';
 import type { Supercuration, Link as LinkType } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 export function PublicSupercurationPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -20,6 +21,7 @@ export function PublicSupercurationPage() {
   const [timeFilter, setTimeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [formatFilter, setFormatFilter] = useState<string | null>(null);
+  const [filteredLinks, setFilteredLinks] = useState<LinkType[]>([]);
 
   const navigate = useNavigate();
 
@@ -85,10 +87,32 @@ export function PublicSupercurationPage() {
         const linksQuery = query(linksRef, where('supercuration_ids', 'array-contains', supercurationData.id));
         const linksSnapshot = await getDocs(linksQuery);
 
-        const linksData = linksSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as LinkType[];
+        const linksData = linksSnapshot.docs.map(doc => {
+          const data = doc.data();
+          // If id is empty or undefined, generate a new UUID
+          const id = doc.id || uuidv4();
+          return {
+            id,
+            ...data
+          } as LinkType;
+        }).map(link => {
+          // Double check for any empty IDs in the data
+          if (!link.id || link.id.trim() === '') {
+            return {
+              ...link,
+              id: uuidv4()
+            };
+          }
+          return link;
+        });
+
+        console.log('All fetched links:', linksData.map(link => ({
+          id: link.id,
+          title: link.title,
+          url: link.url,
+          created_at: link.created_at,
+          supercuration_ids: link.supercuration_ids
+        })));
 
         setLinks(linksData);
       } catch (err) {
@@ -102,29 +126,37 @@ export function PublicSupercurationPage() {
     fetchSupercuration();
   }, [slug]);
 
-  const filteredLinks = selectedFilters.length > 0
-    ? links.filter(link => {
-        return selectedFilters.some(filter => {
-          // Check supercuration tags
-          const linkTags = link.supercuration_tags?.[supercuration?.id || ''] || [];
-          if (linkTags.includes(filter)) return true;
-          
-          // Check topic_ids
-          if (link.topic_ids?.includes(filter)) return true;
-          
-          // Check emoji_tags
-          if (link.emoji_tags?.includes(filter)) return true;
-          
-          return false;
-        });
-      })
-    : links;
+  useEffect(() => {
+    const newFiltered = getFilteredLinks();
+    setFilteredLinks(newFiltered);
+  }, [selectedFilters, formatFilter, timeFilter, sortBy, links]);
 
   const getFilteredLinks = () => {
-    // Start with filtered links based on selected filters
-    let filtered = [...new Set(filteredLinks)]; // Ensure no duplicates in initial array
+    console.log('Starting getFilteredLinks with:', links.map(link => ({
+      id: link.id,
+      title: link.title,
+      url: link.url,
+      created_at: link.created_at
+    })));
 
-    // Filter by format
+    // Start with all links
+    let filtered = [...links];
+
+    // Apply topic/tag filters first
+    if (selectedFilters.length > 0) {
+      filtered = filtered.filter(link => {
+        const linkTags = link.supercuration_tags?.[supercuration?.id || ''] || [];
+        const hasMatchingFilter = selectedFilters.some(filter => {
+          if (linkTags.includes(filter)) return true;
+          if (link.topic_ids?.includes(filter)) return true;
+          if (link.emoji_tags?.includes(filter)) return true;
+          return false;
+        });
+        return hasMatchingFilter;
+      });
+    }
+
+    // Apply format filter
     if (formatFilter) {
       filtered = filtered.filter(link => {
         const emojiTags = Array.isArray(link.emoji_tags) ? link.emoji_tags : [];
@@ -132,7 +164,7 @@ export function PublicSupercurationPage() {
       });
     }
 
-    // Filter by time
+    // Apply time filter
     const now = new Date();
     if (timeFilter !== 'all') {
       filtered = filtered.filter(link => {
@@ -155,7 +187,7 @@ export function PublicSupercurationPage() {
     }
 
     // Sort links
-    return filtered.sort((a, b) => {
+    const sorted = filtered.sort((a, b) => {
       switch (sortBy) {
         case 'oldest':
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -166,6 +198,16 @@ export function PublicSupercurationPage() {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
+
+    console.log('Final sorted links:', sorted.map(link => ({
+      id: link.id,
+      title: link.title,
+      url: link.url,
+      created_at: link.created_at,
+      created_time: new Date(link.created_at).getTime()
+    })));
+
+    return sorted;
   };
 
   if (loading) {
@@ -355,7 +397,7 @@ export function PublicSupercurationPage() {
             {/* Main Content */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-medium text-gray-900">
-                {getFilteredLinks().length} Resources
+                {filteredLinks.length} Resources
               </h2>
               <div className="flex items-center gap-2 border rounded-full p-1 bg-white">
                 <button
@@ -383,7 +425,7 @@ export function PublicSupercurationPage() {
 
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getFilteredLinks().map((link) => (
+                {filteredLinks.map((link) => (
                   <a
                     key={link.id}
                     href={link.url}
@@ -410,7 +452,7 @@ export function PublicSupercurationPage() {
                       </p>
                       {link.supercuration_tags && supercuration.id && link.supercuration_tags[supercuration.id]?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-3">
-                          {(link.supercuration_tags[supercuration.id] || []).map((tag) => {
+                          {(link.supercuration_tags[supercuration.id] || []).map((tag: string) => {
                             const category = supercuration.tagCategories?.find(cat => 
                               cat.tags.includes(tag)
                             );
@@ -436,7 +478,7 @@ export function PublicSupercurationPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {getFilteredLinks().map((link) => (
+                {filteredLinks.map((link) => (
                   <a
                     key={link.id}
                     href={link.url}
@@ -463,7 +505,7 @@ export function PublicSupercurationPage() {
                           </p>
                           {link.supercuration_tags && supercuration.id && link.supercuration_tags[supercuration.id]?.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mt-3">
-                              {(link.supercuration_tags[supercuration.id] || []).map((tag) => {
+                              {(link.supercuration_tags[supercuration.id] || []).map((tag: string) => {
                                 const category = supercuration.tagCategories?.find(cat => 
                                   cat.tags.includes(tag)
                                 );

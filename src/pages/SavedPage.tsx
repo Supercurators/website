@@ -8,9 +8,25 @@ import { TopicManager } from '../components/TopicManager';
 import { EditLinkModal } from '../components/EditLinkModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { TopicFilter } from '../components/TopicFilter';
-import { LinkPreviewInput } from '../components/LinkPreviewInput';
-import { AIUrlExtractor } from '../components/AIUrlExtractor';
+import { ShareForm } from '../components/ShareForm';
 import type { Link, Topic } from '../types';
+
+interface FirestoreLink {
+  url: string;
+  title: string;
+  description: string;
+  created_by: string;
+  created_at: any; // Firestore Timestamp
+  updated_at: any;
+  emoji_tags: string[];
+  topic_ids: string[];
+  likes: number;
+  is_original_content: boolean;
+  thumbnail_url?: string;
+  original_post_id?: string;
+  user: any; // Making this required to match Link type
+  reposts_count?: number;
+}
 
 export function SavedPage() {
   const { topics: rawTopics } = useCategoryStore();
@@ -31,7 +47,6 @@ export function SavedPage() {
   const [editingLink, setEditingLink] = useState<Link | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [formatFilter, setFormatFilter] = useState<string | null>(null);
-  const [showAIExtractor, setShowAIExtractor] = useState(false);
 
   const FORMATS = [
     { emoji: '📝', label: 'Article' },
@@ -74,17 +89,30 @@ export function SavedPage() {
           );
         }
 
-        // Store the query in ref
         linksQueryRef.current = linksQuery;
 
         const querySnapshot = await getDocs(linksQuery);
-        const fetchedLinks: Link[] = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          created_at: doc.data().created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
-          liked: false,
-          likes: doc.data().likes || 0
-        })) as Link[];
+        const fetchedLinks: Link[] = querySnapshot.docs.map(doc => {
+          const data = doc.data() as FirestoreLink;
+          return {
+            id: doc.id,
+            url: data.url,
+            title: data.title,
+            description: data.description,
+            created_by: data.created_by,
+            created_at: data.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
+            updated_at: data.updated_at?.toDate?.()?.toISOString(),
+            emoji_tags: data.emoji_tags || [],
+            topic_ids: data.topic_ids || [],
+            likes: data.likes || 0,
+            liked: false,
+            is_original_content: data.is_original_content || false,
+            thumbnail_url: data.thumbnail_url,
+            original_post_id: data.original_post_id,
+            user: data.user,
+            reposts_count: data.reposts_count || 0
+          };
+        });
 
         setLinks(fetchedLinks);
       } catch (err) {
@@ -97,6 +125,41 @@ export function SavedPage() {
 
     fetchLinks();
   }, [view]);
+
+  useEffect(() => {
+    const unsubscribe = useLinkStore.subscribe(() => {
+      if (linksQueryRef.current) {
+        getDocs(linksQueryRef.current).then((querySnapshot) => {
+          const fetchedLinks: Link[] = querySnapshot.docs.map(doc => {
+            const data = doc.data() as FirestoreLink;
+            return {
+              id: doc.id,
+              url: data.url,
+              title: data.title,
+              description: data.description,
+              created_by: data.created_by,
+              created_at: data.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
+              updated_at: data.updated_at?.toDate?.()?.toISOString(),
+              emoji_tags: data.emoji_tags || [],
+              topic_ids: data.topic_ids || [],
+              likes: data.likes || 0,
+              liked: false,
+              is_original_content: data.is_original_content || false,
+              thumbnail_url: data.thumbnail_url,
+              original_post_id: data.original_post_id,
+              user: data.user,
+              reposts_count: data.reposts_count || 0
+            };
+          });
+          setLinks(fetchedLinks);
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const handleDelete = async (id: string) => {
     try {
@@ -190,28 +253,6 @@ export function SavedPage() {
     }
   };
 
-  const handleShare = async (linkData: Partial<Link>) => {
-    try {
-      // You'll need to implement the actual sharing logic here
-      // This could involve adding to Firestore and updating local state
-      const newLink = {
-        ...linkData,
-        created_at: new Date().toISOString(),
-        created_by: auth.currentUser?.uid,
-        likes: 0,
-        liked: false,
-      } as Link;
-
-      // Update the links state with the new link
-      setLinks(prev => [newLink, ...prev]);
-      
-      // Reset the AI extractor if it was open
-      setShowAIExtractor(false);
-    } catch (error) {
-      console.error('Error sharing link:', error);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -222,23 +263,7 @@ export function SavedPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4">
-      <div className="mb-8">
-        <LinkPreviewInput onShare={handleShare} />
-        <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
-          <button
-            onClick={() => setShowAIExtractor(true)}
-            className="text-blue-600 hover:text-blue-700"
-          >
-            Import multiple URLs from text or image
-          </button>
-        </div>
-
-        {showAIExtractor && (
-          <div className="mt-4">
-            <AIUrlExtractor />
-          </div>
-        )}
-      </div>
+      <ShareForm />
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">

@@ -6,13 +6,12 @@ import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/authStore';
 import { useSupercurationStore } from '../store/supercurationStore';
 import { TagCategoryEditor } from '../components/TagCategoryEditor';
-import { LinkPreviewInput } from '../components/LinkPreviewInput';
-import { AIUrlExtractor } from '../components/AIUrlExtractor';
 import { EmojiTagSelector } from '../components/EmojiTagSelector';
 import type { Supercuration, Link as LinkType } from '../types';
 import { Link as RouterLink } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useLinkStore } from '../store/linkStore';
+import { ShareForm } from '../components/ShareForm';
 
 export function SupercurationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,7 +30,6 @@ export function SupercurationDetailPage() {
   const [deletingResourceId, setDeletingResourceId] = useState<string | null>(null);
   const [savedLinks, setSavedLinks] = useState<LinkType[]>([]);
   const [isFetchingSaved, setIsFetchingSaved] = useState(false);
-  const [showAIExtractor, setShowAIExtractor] = useState(false);
   const [editingLink, setEditingLink] = useState<LinkType | null>(null);
   const { updateLink } = useLinkStore();
 
@@ -268,35 +266,6 @@ export function SupercurationDetailPage() {
       fetchSavedLinks();
     }
   }, [showAddResource]);
-
-  const handleLinkPreviewShare = (data: { 
-    url: string; 
-    title: string; 
-    description: string; 
-    thumbnail_url?: string;
-  }) => {
-    const linkData: LinkType = {
-      ...data,
-      id: '', // This will be set by Firebase
-      created_at: new Date().toISOString(),
-      created_by: user?.id || '',
-      supercuration_ids: [],
-      emoji_tags: [],
-      topic_ids: [],
-      is_original_content: false,
-      supercuration_tags: {},
-      user: {
-        id: user?.id || '',
-        name: user?.name || '',
-        avatar_url: user?.avatar_url || ''
-      },
-      liked: false,
-      likes: 0,
-      reposts_count: 0
-    };
-    
-    handleAddResource(linkData);
-  };
 
   const handleEditResource = async (
     selectedEmojis: string[],
@@ -735,26 +704,8 @@ export function SupercurationDetailPage() {
 
               <div>
                 <h3 className="font-medium text-gray-900 mb-4">Add a new link</h3>
-                <LinkPreviewInput
-                  onShare={handleLinkPreviewShare}
-                  onCancel={() => setShowAddResource(false)}
-                />
-                <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
-                  <button
-                    onClick={() => setShowAIExtractor(true)}
-                    className="text-blue-600 hover:text-blue-700"
-                  >
-                    Import multiple URLs from text or image
-                  </button>
-                </div>
+                <ShareForm />
               </div>
-
-              {showAIExtractor && (
-                <div className="mt-4 border-t pt-4">
-                  <h3 className="font-medium text-gray-900 mb-4">Import Multiple URLs</h3>
-                  <AIUrlExtractor />
-                </div>
-              )}
             </div>
           </div>
         </div>

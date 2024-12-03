@@ -1,15 +1,19 @@
 import { fetchWithProxy } from './proxyConfig';
+import { normalizeUrl } from '../components/ShareForm';
 
 export async function getLinkPreview(url: string) {
   try {
+    // Normalize the URL first
+    const normalizedUrl = normalizeUrl(url);
+    
     // First try to fetch metadata using a more reliable service
     try {
-      const response = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`);
+      const response = await fetch(`https://api.microlink.io?url=${encodeURIComponent(normalizedUrl)}`);
       const data = await response.json();
       
       if (data.status === 'success') {
         return {
-          url,
+          url: normalizedUrl,
           title: data.data.title || '',
           description: data.data.description || '',
           thumbnail_url: data.data.image?.url,
@@ -20,7 +24,7 @@ export async function getLinkPreview(url: string) {
     }
 
     // Fallback to manual scraping with proxy
-    const html = await fetchWithProxy(url);
+    const html = await fetchWithProxy(normalizedUrl);
     
     // Basic metadata extraction
     const parser = new DOMParser();
@@ -39,7 +43,7 @@ export async function getLinkPreview(url: string) {
       || '';
 
     return {
-      url,
+      url: normalizedUrl,
       title: title.trim(),
       description: description.trim(),
       thumbnail_url: thumbnail_url || undefined,
@@ -48,8 +52,8 @@ export async function getLinkPreview(url: string) {
     console.error('Failed to fetch link preview:', error);
     // Return basic preview with just the URL if everything fails
     return {
-      url,
-      title: new URL(url).hostname,
+      url: normalizeUrl(url),
+      title: new URL(normalizeUrl(url)).hostname,
       description: 'No preview available',
     };
   }

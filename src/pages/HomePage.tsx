@@ -4,30 +4,20 @@ import { ExternalLink, Heart, Star, Clock, Edit2, Trash2, ArrowUpDown } from 'lu
 import { useLinkStore } from '../store/linkStore';
 import { useAuthStore } from '../store/authStore';
 import { useCategoryStore } from '../store/categoryStore';
-import { AIUrlExtractor } from '../components/AIUrlExtractor';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
-import { EmojiTagSelector } from '../components/EmojiTagSelector';
-import { LinkPreviewInput } from '../components/LinkPreviewInput';
 import { EditLinkModal } from '../components/EditLinkModal';
 import type { Link } from '../types';
 import { cleanupInvalidLinks } from '../lib/firestore';
+import { ShareForm } from '../components/ShareForm';
 
 export function HomePage() {
   const { user } = useAuthStore();
   const { topics } = useCategoryStore();
-  const { links, toggleLike, removeLink, fetchLinks, addLink } = useLinkStore();
+  const { links, toggleLike, removeLink, fetchLinks } = useLinkStore();
   const [timeFilter, setTimeFilter] = useState('all');
   const [formatFilter, setFormatFilter] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [showEmojiSelector, setShowEmojiSelector] = useState(false);
-  const [showAIExtractor, setShowAIExtractor] = useState(false);
   const [editingLink, setEditingLink] = useState<Link | null>(null);
-  const [linkPreview, setLinkPreview] = useState<{
-    url: string;
-    title: string;
-    description: string;
-    thumbnail_url?: string;
-  } | null>(null);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
 
@@ -77,16 +67,6 @@ export function HomePage() {
     } catch (error) {
       console.error('Failed to delete link:', error);
     }
-  };
-
-  const handleShare = async (preview: {
-    url: string;
-    title: string;
-    description: string;
-    thumbnail_url?: string;
-  }) => {
-    setLinkPreview(preview);
-    setShowEmojiSelector(true);
   };
 
   const FORMATS = [
@@ -204,23 +184,7 @@ export function HomePage() {
   return (
     <div className="max-w-2xl mx-auto p-4">
       {/* Share Form */}
-      <div className="mb-8">
-        <LinkPreviewInput onShare={handleShare} />
-        <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
-          <button
-            onClick={() => setShowAIExtractor(true)}
-            className="text-blue-600 hover:text-blue-700"
-          >
-            Import multiple URLs from text or image
-          </button>
-        </div>
-
-        {showAIExtractor && (
-          <div className="mt-4">
-            <AIUrlExtractor />
-          </div>
-        )}
-      </div>
+      <ShareForm />
 
       {/* Filter Bar */}
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6 space-y-4">
@@ -401,33 +365,6 @@ export function HomePage() {
           );
         })}
       </div>
-
-      {/* Modals */}
-      {showEmojiSelector && linkPreview && (
-        <EmojiTagSelector
-          suggestedTags={[]}
-          onClose={() => {
-            setShowEmojiSelector(false);
-            setLinkPreview(null);
-          }}
-          onSave={async (selectedEmojis, selectedTopics, isOriginal) => {
-            try {
-              await addLink({
-                ...linkPreview,
-                emoji_tags: selectedEmojis,
-                topic_ids: selectedTopics,
-                is_original_content: isOriginal,
-                publish_to_feed: true
-              });
-              setShowEmojiSelector(false);
-              setLinkPreview(null);
-            } catch (err) {
-              console.error('Error sharing link:', err);
-            }
-          }}
-          preview={linkPreview}
-        />
-      )}
 
       {showDeleteConfirm && (
         <DeleteConfirmModal
