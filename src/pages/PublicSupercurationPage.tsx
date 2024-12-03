@@ -345,13 +345,13 @@ export function PublicSupercurationPage() {
           <div className="flex-1">
             {/* Filter Bar */}
             <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative min-w-[120px]">
                     <select 
                       value={timeFilter}
                       onChange={(e) => setTimeFilter(e.target.value)}
-                      className="appearance-none pl-8 pr-4 py-1.5 bg-white border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full appearance-none pl-8 pr-4 py-1.5 bg-white border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="all">All time</option>
                       <option value="today">Today</option>
@@ -361,11 +361,11 @@ export function PublicSupercurationPage() {
                     <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   </div>
 
-                  <div className="relative">
+                  <div className="relative min-w-[130px]">
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="appearance-none pl-8 pr-4 py-1.5 bg-white border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full appearance-none pl-8 pr-4 py-1.5 bg-white border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {SORT_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
