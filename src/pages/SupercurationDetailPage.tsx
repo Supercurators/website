@@ -9,6 +9,7 @@ import { TagCategoryEditor } from '../components/TagCategoryEditor';
 import { LinkPreviewInput } from '../components/LinkPreviewInput';
 import { AIUrlExtractor } from '../components/AIUrlExtractor';
 import type { Supercuration, Link as LinkType } from '../types';
+import { Link as RouterLink } from 'react-router-dom';
 
 export function SupercurationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -348,14 +349,12 @@ export function SupercurationDetailPage() {
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Globe className="w-4 h-4" />
             <span>Public URL:</span>
-            <a
-              href={`/s/${supercuration.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <RouterLink
+              to={`/supercurations/public/${supercuration.slug}`}
               className="text-blue-600 hover:text-blue-700"
             >
-              supercurators.com/s/{supercuration.slug}
-            </a>
+              supercurators.com/supercurations/public/{supercuration.slug}
+            </RouterLink>
           </div>
         )}
       </div>
