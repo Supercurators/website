@@ -19,6 +19,7 @@ export function EditLinkModal({ isOpen, onClose, linkId, onEditComplete }: EditL
   const [formData, setFormData] = useState({
     title: link?.title || '',
     description: link?.description || '',
+    url: link?.url || '',
     is_original_content: link?.is_original_content || false,
     thumbnail_url: link?.thumbnail_url || '',
     topic_ids: link?.topic_ids || [],
@@ -97,6 +98,7 @@ export function EditLinkModal({ isOpen, onClose, linkId, onEditComplete }: EditL
       const updatedLinkData = {
         title: formData.title,
         description: formData.description,
+        url: formData.url,
         is_original_content: formData.is_original_content,
         thumbnail_url: formData.thumbnail_url
       };
@@ -153,6 +155,24 @@ export function EditLinkModal({ isOpen, onClose, linkId, onEditComplete }: EditL
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                URL (optional)
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="url"
+                    value={formData.url}
+                    onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                    className="w-full pl-9 pr-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter URL (optional)"
+                  />
+                </div>
+              </div>
             </div>
 
             <div>
