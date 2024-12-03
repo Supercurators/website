@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Globe } from 'lucide-react';
+import { Lock, Globe, Tag } from 'lucide-react';
 import { useSupercurationStore } from '../store/supercurationStore';
 import { useCategoryStore } from '../store/categoryStore';
 
 export function NewSupercurationPage() {
   const navigate = useNavigate();
   const { addSupercuration } = useSupercurationStore();
-  const { topics } = useCategoryStore();
+  const { topics, addTopic } = useCategoryStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -18,6 +18,8 @@ export function NewSupercurationPage() {
     is_public: false,
     slug: ''
   });
+  const [showNewTopicForm, setShowNewTopicForm] = useState(false);
+  const [newTopic, setNewTopic] = useState({ name: '', color: '#2563eb' });
 
   const generateSlug = (title: string) => {
     return title
@@ -55,6 +57,18 @@ export function NewSupercurationPage() {
       setError(err instanceof Error ? err.message : 'Failed to create supercuration');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddNewTopic = () => {
+    if (newTopic.name.trim()) {
+      const topic = addTopic(newTopic.name.trim(), newTopic.color);
+      setFormData(prev => ({
+        ...prev,
+        topics: [...prev.topics, topic.id]
+      }));
+      setNewTopic({ name: '', color: '#2563eb' });
+      setShowNewTopicForm(false);
     }
   };
 
@@ -149,9 +163,47 @@ export function NewSupercurationPage() {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Topics
-          </label>
+          <div className="flex items-center justify-between mb-3">
+            <label className="block text-sm font-medium text-gray-700">
+              Topics
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowNewTopicForm(!showNewTopicForm)}
+              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            >
+              <Tag className="w-4 h-4" />
+              Add Topic
+            </button>
+          </div>
+
+          {showNewTopicForm && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Topic name"
+                  value={newTopic.name}
+                  onChange={(e) => setNewTopic({ ...newTopic, name: e.target.value })}
+                  className="flex-1 px-3 py-1 text-sm border rounded"
+                />
+                <input
+                  type="color"
+                  value={newTopic.color}
+                  onChange={(e) => setNewTopic({ ...newTopic, color: e.target.value })}
+                  className="w-8 h-8 p-1 border rounded cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddNewTopic}
+                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
             {topics.map((topic) => (
               <button
