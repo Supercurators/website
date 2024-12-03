@@ -73,6 +73,8 @@ export function PublicSupercurationPage() {
           ...querySnapshot.docs[0].data()
         } as Supercuration;
 
+        console.log('Supercuration created_at:', supercurationData.created_at, 'Type:', typeof supercurationData.created_at);
+
         console.log('Found supercuration:', supercurationData);
 
         // Verify that is_public is true
@@ -260,7 +262,11 @@ export function PublicSupercurationPage() {
                   </span>
                 )}
                 <span className="text-sm text-gray-400">
-                  Updated {new Date(supercuration.created_at).toLocaleDateString()}
+                  Created on {supercuration.created_at?.toDate().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
                 </span>
               </div>
 
