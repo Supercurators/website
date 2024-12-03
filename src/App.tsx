@@ -49,10 +49,15 @@ export function App() {
     <HelmetProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/directory" element={<PublicDirectoryPage />} />
+          <Route path="/s/:slug" element={<PublicSupercurationPage />} />
+          <Route path="/" element={<LandingPage />} />
+
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
           </Route>
+
           <Route element={<ProtectedLayout />}>
             <Route path="/home" element={<HomePage />} />
             <Route path="/saved" element={<SavedPage />} />
@@ -62,9 +67,6 @@ export function App() {
             <Route path="/supercurations/:id" element={<SupercurationDetailPage />} />
             <Route path="/profile/:id" element={<ProfilePage />} />
           </Route>
-          <Route path="/directory" element={<PublicDirectoryPage />} />
-          <Route path="/s/:slug" element={<PublicSupercurationPage />} />
-          <Route path="/" element={<LandingPage />} />
         </Routes>
         <OfflineIndicator />
       </BrowserRouter>
