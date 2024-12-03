@@ -161,22 +161,22 @@ export const useLinkStore = create<LinkState>((set, get) => ({
     }
   },
 
-  updateLink: async (id: string, data: Partial<Link>) => {
+  updateLink: async (linkId: string, updates: Partial<Link>) => {
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('Must be logged in to update links');
-      }
-
-      const linkRef = doc(db, 'links', id);
-      await updateDoc(linkRef, sanitizeForFirestore(data));
-
+      const linkRef = doc(db, 'links', linkId);
+      await updateDoc(linkRef, {
+        ...updates,
+        updated_at: serverTimestamp()
+      });
+      
+      // Update local state
       set(state => ({
         links: state.links.map(link =>
-          link.id === id ? { ...link, ...data } : link
-        ),
-        error: null
+          link.id === linkId ? { ...link, ...updates } : link
+        )
       }));
+      
+      return;
     } catch (error) {
       console.error('Error updating link:', error);
       throw error;
@@ -289,12 +289,44 @@ export const useLinkStore = create<LinkState>((set, get) => ({
     }
   },
 
-  updateLinkTopics: async (_id: string, _topics: string[]) => {
-    // Implementation needed
+  updateLinkTopics: async (id: string, topics: string[]) => {
+    try {
+      const linkRef = doc(db, 'links', id);
+      await updateDoc(linkRef, {
+        topic_ids: topics,
+        updated_at: serverTimestamp()
+      });
+      
+      // Update local state
+      set(state => ({
+        links: state.links.map(link =>
+          link.id === id ? { ...link, topic_ids: topics } : link
+        )
+      }));
+    } catch (error) {
+      console.error('Error updating link topics:', error);
+      throw error;
+    }
   },
 
-  updateLinkFormats: async (_id: string, _formats: string[]) => {
-    // Implementation needed
+  updateLinkFormats: async (id: string, formats: string[]) => {
+    try {
+      const linkRef = doc(db, 'links', id);
+      await updateDoc(linkRef, {
+        emoji_tags: formats,
+        updated_at: serverTimestamp()
+      });
+      
+      // Update local state
+      set(state => ({
+        links: state.links.map(link =>
+          link.id === id ? { ...link, emoji_tags: formats } : link
+        )
+      }));
+    } catch (error) {
+      console.error('Error updating link formats:', error);
+      throw error;
+    }
   },
 
   removeTopicFromLinks: async (_topicId: string) => {

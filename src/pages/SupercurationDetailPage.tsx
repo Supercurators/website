@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Grid, List, Globe, Lock, Tag, Plus, Trash2, X } from 'lucide-react';
+import { Grid, List, Globe, Lock, Tag, Plus, Trash2, X, Pencil } from 'lucide-react';
 import { doc, getDoc, collection, query, where, getDocs, deleteDoc, runTransaction, deleteField } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/authStore';
@@ -8,8 +8,11 @@ import { useSupercurationStore } from '../store/supercurationStore';
 import { TagCategoryEditor } from '../components/TagCategoryEditor';
 import { LinkPreviewInput } from '../components/LinkPreviewInput';
 import { AIUrlExtractor } from '../components/AIUrlExtractor';
+import { EmojiTagSelector } from '../components/EmojiTagSelector';
 import type { Supercuration, Link as LinkType } from '../types';
 import { Link as RouterLink } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+import { useLinkStore } from '../store/linkStore';
 
 export function SupercurationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +32,8 @@ export function SupercurationDetailPage() {
   const [savedLinks, setSavedLinks] = useState<LinkType[]>([]);
   const [isFetchingSaved, setIsFetchingSaved] = useState(false);
   const [showAIExtractor, setShowAIExtractor] = useState(false);
+  const [editingLink, setEditingLink] = useState<LinkType | null>(null);
+  const { updateLink } = useLinkStore();
 
   const handleTagFilter = (tag: string) => {
     setSelectedFilters(prev => {
@@ -293,6 +298,49 @@ export function SupercurationDetailPage() {
     handleAddResource(linkData);
   };
 
+  const handleEditResource = async (
+    selectedEmojis: string[],
+    selectedTopics: string[],
+    isOriginal: boolean,
+    postData: {
+      url?: string;
+      title: string;
+      description: string;
+      thumbnail_url?: string;
+    }
+  ) => {
+    if (!editingLink?.id) return;
+
+    try {
+      await updateLink(editingLink.id, {
+        ...postData,
+        emoji_tags: selectedEmojis,
+        topic_ids: selectedTopics,
+        is_original_content: isOriginal
+      });
+
+      // Update local state
+      setLinks(prev => prev.map(link =>
+        link.id === editingLink.id 
+          ? {
+              ...link,
+              ...postData,
+              emoji_tags: selectedEmojis,
+              topic_ids: selectedTopics,
+              is_original_content: isOriginal,
+              updated_at: new Date().toISOString(),
+            }
+          : link
+      ));
+
+      toast.success('Resource updated successfully');
+      setEditingLink(null);
+    } catch (err) {
+      console.error('Error updating resource:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to update resource');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -429,13 +477,22 @@ export function SupercurationDetailPage() {
             >
               <div className="relative">
                 {isOwner && (
-                  <button
-                    onClick={() => setDeletingResourceId(link.id)}
-                    className="absolute top-2 right-2 z-10 p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-600 hover:bg-gray-100"
-                    title="Remove from supercuration"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="absolute top-2 right-2 z-10 flex gap-2">
+                    <button
+                      onClick={() => setEditingLink(link)}
+                      className="p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-blue-600 hover:bg-gray-100"
+                      title="Edit resource"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeletingResourceId(link.id)}
+                      className="p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-600 hover:bg-gray-100"
+                      title="Remove from supercuration"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
                 <a
                   href={link.url}
@@ -524,13 +581,22 @@ export function SupercurationDetailPage() {
                         </p>
                       </div>
                       {isOwner && (
-                        <button
-                          onClick={() => setDeletingResourceId(link.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
-                          title="Remove from supercuration"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setEditingLink(link)}
+                            className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100"
+                            title="Edit resource"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeletingResourceId(link.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
+                            title="Remove from supercuration"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
                     {(link.supercuration_tags?.[id || ''] ?? []).length > 0 && (
@@ -728,6 +794,24 @@ export function SupercurationDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {editingLink && (
+        <EmojiTagSelector
+          suggestedTags={[]}
+          onClose={() => setEditingLink(null)}
+          onSave={handleEditResource}
+          preview={{
+            url: editingLink.url,
+            title: editingLink.title,
+            description: editingLink.description,
+            thumbnail_url: editingLink.thumbnail_url,
+          }}
+          isEditing={true}
+          initialEmojis={editingLink.emoji_tags || []}
+          initialTopics={editingLink.topic_ids || []}
+          initialIsOriginal={editingLink.is_original_content || false}
+        />
       )}
     </div>
   );

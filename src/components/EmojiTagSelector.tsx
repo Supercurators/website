@@ -7,7 +7,7 @@ interface EmojiTagSelectorProps {
   suggestedTags: string[];
   onClose: () => void;
   onSave: (selectedEmojis: string[], selectedTopics: string[], isOriginal: boolean, postData: {
-    url?: string; // Make URL optional
+    url?: string;
     title: string;
     description: string;
     thumbnail_url?: string;
@@ -16,8 +16,12 @@ interface EmojiTagSelectorProps {
     title: string;
     description: string;
     thumbnail_url?: string;
-    url?: string; // Make URL optional
+    url?: string;
   };
+  isEditing?: boolean;
+  initialEmojis?: string[];
+  initialTopics?: string[];
+  initialIsOriginal?: boolean;
 }
 
 const FORMATS = [
@@ -33,11 +37,19 @@ const FORMATS = [
   { emoji: '🔗', label: 'Other' }
 ];
 
-export function EmojiTagSelector({ onClose, onSave, preview }: EmojiTagSelectorProps) {
+export function EmojiTagSelector({ 
+  onClose, 
+  onSave, 
+  preview, 
+  isEditing = false,
+  initialEmojis = [],
+  initialTopics = [],
+  initialIsOriginal = false,
+}: EmojiTagSelectorProps) {
   const { topics, addTopic } = useCategoryStore();
-  const [selectedEmojis, setSelectedEmojis] = useState<string[]>([]);
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-  const [isOriginalContent, setIsOriginalContent] = useState(false);
+  const [selectedEmojis, setSelectedEmojis] = useState<string[]>(initialEmojis);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(initialTopics);
+  const [isOriginalContent, setIsOriginalContent] = useState(initialIsOriginal);
   const [showNewTopicForm, setShowNewTopicForm] = useState(false);
   const [newTopic, setNewTopic] = useState({ name: '', color: '#2563eb' });
   const [postData, setPostData] = useState({
@@ -47,6 +59,7 @@ export function EmojiTagSelector({ onClose, onSave, preview }: EmojiTagSelectorP
     thumbnail_url: preview.thumbnail_url || '',
     imageType: 'url' as 'url' | 'upload'
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -68,6 +81,20 @@ export function EmojiTagSelector({ onClose, onSave, preview }: EmojiTagSelectorP
       setSelectedTopics(prev => [...prev, topic.id]);
       setNewTopic({ name: '', color: '#2563eb' });
       setShowNewTopicForm(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await onSave(selectedEmojis, selectedTopics, isOriginalContent, {
+        ...(postData.url ? { url: postData.url } : {}),
+        title: postData.title,
+        description: postData.description,
+        thumbnail_url: postData.thumbnail_url
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -308,20 +335,24 @@ export function EmojiTagSelector({ onClose, onSave, preview }: EmojiTagSelectorP
           <div className="mt-6 flex justify-end space-x-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
-              onClick={() => onSave(selectedEmojis, selectedTopics, isOriginalContent, {
-                ...(postData.url ? { url: postData.url } : {}),
-                title: postData.title,
-                description: postData.description,
-                thumbnail_url: postData.thumbnail_url
-              })}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
             >
-              Share
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Updating...
+                </>
+              ) : (
+                isEditing ? 'Update' : 'Share'
+              )}
             </button>
           </div>
         </div>

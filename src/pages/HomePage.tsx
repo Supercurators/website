@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { ExternalLink, Heart, Star, Clock, Edit2, Trash2 } from 'lucide-react';
+import { ExternalLink, Heart, Star, Clock, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import { useLinkStore } from '../store/linkStore';
 import { useAuthStore } from '../store/authStore';
 import { useCategoryStore } from '../store/categoryStore';
@@ -29,6 +29,7 @@ export function HomePage() {
     thumbnail_url?: string;
   } | null>(null);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [sortBy, setSortBy] = useState('newest');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -101,6 +102,12 @@ export function HomePage() {
     { emoji: '🔗', label: 'Other' }
   ];
 
+  const SORT_OPTIONS = [
+    { value: 'newest', label: 'Newest First' },
+    { value: 'oldest', label: 'Oldest First' },
+    { value: 'most_liked', label: 'Most Liked' },
+  ];
+
   const getFilteredLinks = () => {
     console.log('Current filters:', { timeFilter, formatFilter });
     
@@ -164,12 +171,35 @@ export function HomePage() {
       }
     }
 
+    // Sort by created_at in descending order (newest first)
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'most_liked':
+          return (b.likes || 0) - (a.likes || 0);
+        case 'newest':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
+
     console.log('Filtered results:', filtered);
     return filtered;
   };
 
   const filteredLinks = getFilteredLinks();
   console.log('Filtered Links:', filteredLinks);
+
+  const handleEditComplete = async () => {
+    try {
+      // Refresh the links after an edit
+      await fetchLinks();
+      setEditingLink(null);
+    } catch (error) {
+      console.error('Error refreshing links after edit:', error);
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto p-4">
@@ -208,6 +238,21 @@ export function HomePage() {
                 <option value="month">This month</option>
               </select>
               <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            </div>
+
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none pl-8 pr-4 py-1.5 bg-white border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {SORT_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             </div>
           </div>
         </div>
@@ -397,6 +442,7 @@ export function HomePage() {
           isOpen={true}
           onClose={() => setEditingLink(null)}
           linkId={editingLink.id}
+          onEditComplete={handleEditComplete}
         />
       )}
     </div>

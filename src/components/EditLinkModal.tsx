@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { X, Star, Upload, Link as LinkIcon, Tag } from 'lucide-react';
 import { useLinkStore } from '../store/linkStore';
 import { useCategoryStore } from '../store/categoryStore';
+import type { Link } from '../types';
 
 interface EditLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
   linkId: string;
+  onEditComplete?: (updatedLink: Link) => void;
 }
 
-export function EditLinkModal({ isOpen, onClose, linkId }: EditLinkModalProps) {
+export function EditLinkModal({ isOpen, onClose, linkId, onEditComplete }: EditLinkModalProps) {
   const { links, updateLink, updateLinkTopics, updateLinkFormats } = useLinkStore();
   const { topics, addTopic } = useCategoryStore();
   const link = links.find(l => l.id === linkId);
@@ -92,18 +94,31 @@ export function EditLinkModal({ isOpen, onClose, linkId }: EditLinkModalProps) {
       setLoading(true);
       
       // Update basic link info
-      await updateLink(linkId, {
+      const updatedLinkData = {
         title: formData.title,
         description: formData.description,
         is_original_content: formData.is_original_content,
         thumbnail_url: formData.thumbnail_url
-      });
-
-      // Update topics and formats
+      };
+      
+      await updateLink(linkId, updatedLinkData);
       await Promise.all([
         updateLinkTopics(linkId, formData.topic_ids),
         updateLinkFormats(linkId, formData.emoji_tags)
       ]);
+
+      // Get the updated link from the store
+      const updatedLink = {
+        ...link,
+        ...updatedLinkData,
+        topic_ids: formData.topic_ids,
+        emoji_tags: formData.emoji_tags,
+        id: linkId
+      };
+
+      if (onEditComplete) {
+        onEditComplete(updatedLink);
+      }
 
       onClose();
     } catch (error) {

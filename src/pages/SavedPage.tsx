@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, Heart, Star, Clock, Tag, Edit2, Trash2 } from 'lucide-react';
 import { useLinkStore } from '../store/linkStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { auth, db } from '../lib/firebase';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, DocumentData } from 'firebase/firestore';
 import { TopicManager } from '../components/TopicManager';
-import { EditFormatsModal } from '../components/EditFormatsModal';
-import { EditTopicsModal } from '../components/EditTopicsModal';
+import { EditLinkModal } from '../components/EditLinkModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { TopicFilter } from '../components/TopicFilter';
 import type { Link, Topic } from '../types';
@@ -19,7 +18,7 @@ export function SavedPage() {
     color: topic.color,
     count: 0,
   })) as Topic[];
-  const { toggleLike, updateLinkFormats, updateLinkTopics, removeLink } = useLinkStore();
+  const { toggleLike, removeLink } = useLinkStore();
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,8 +26,7 @@ export function SavedPage() {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [view, setView] = useState<'shared' | 'reposts'>('shared');
   const [showTopicManager, setShowTopicManager] = useState(false);
-  const [editingFormats, setEditingFormats] = useState<Link | null>(null);
-  const [editingTopics, setEditingTopics] = useState<Link | null>(null);
+  const [editingLink, setEditingLink] = useState<Link | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [formatFilter, setFormatFilter] = useState<string | null>(null);
 
@@ -44,6 +42,9 @@ export function SavedPage() {
     { emoji: '💻', label: 'Dev' },
     { emoji: '🔗', label: 'Other' }
   ];
+
+  // Store the query in a ref to reuse it
+  const linksQueryRef = useRef<ReturnType<typeof query> | null>(null);
 
   useEffect(() => {
     const fetchLinks = async () => {
@@ -69,6 +70,9 @@ export function SavedPage() {
             orderBy('created_at', 'desc')
           );
         }
+
+        // Store the query in ref
+        linksQueryRef.current = linksQuery;
 
         const querySnapshot = await getDocs(linksQuery);
         const fetchedLinks: Link[] = querySnapshot.docs.map(doc => ({
@@ -138,6 +142,49 @@ export function SavedPage() {
     }
 
     return filtered;
+  };
+
+  const handleEditComplete = async (updatedLink: Link) => {
+    try {
+      // Immediately update the link in the current state
+      setLinks(prevLinks => 
+        prevLinks.map(link => 
+          link.id === updatedLink.id ? updatedLink : link
+        )
+      );
+
+      // Then refresh the data from server
+      if (linksQueryRef.current) {
+        const querySnapshot = await getDocs(linksQueryRef.current);
+        const fetchedLinks: Link[] = querySnapshot.docs.map(doc => {
+          const data = doc.data() as DocumentData;
+          return {
+            id: doc.id,
+            url: data.url,
+            title: data.title,
+            description: data.description,
+            created_by: data.created_by,
+            created_at: data.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
+            updated_at: data.updated_at?.toDate?.()?.toISOString(),
+            emoji_tags: data.emoji_tags || [],
+            topic_ids: data.topic_ids || [],
+            likes: data.likes || 0,
+            liked: false,
+            is_original_content: data.is_original_content || false,
+            thumbnail_url: data.thumbnail_url,
+            original_post_id: data.original_post_id,
+            user: data.user,
+            reposts_count: data.reposts_count || 0
+          };
+        });
+        
+        setLinks(fetchedLinks);
+      }
+      
+      setEditingLink(null);
+    } catch (error) {
+      console.error('Error refreshing links after edit:', error);
+    }
   };
 
   if (loading) {
@@ -306,18 +353,11 @@ export function SavedPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setEditingFormats(link)}
+                          onClick={() => setEditingLink(link)}
                           className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-                          title="Edit format"
+                          title="Edit link"
                         >
                           <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setEditingTopics(link)}
-                          className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-                          title="Edit topics"
-                        >
-                          <Tag className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setShowDeleteConfirm(link.id)}
@@ -367,45 +407,12 @@ export function SavedPage() {
           />
         )}
 
-        {editingFormats && (
-          <EditFormatsModal
-            link={editingFormats}
-            onClose={() => setEditingFormats(null)}
-            onSave={async (formats) => {
-              try {
-                await updateLinkFormats(editingFormats.id, formats);
-                setEditingFormats(null);
-                setLinks(prev => prev.map(link =>
-                  link.id === editingFormats.id
-                    ? { ...link, emoji_tags: formats }
-                    : link
-                ));
-              } catch (err) {
-                console.error('Error updating formats:', err);
-                setError('Failed to update formats');
-              }
-            }}
-          />
-        )}
-
-        {editingTopics && (
-          <EditTopicsModal
-            link={editingTopics}
-            onClose={() => setEditingTopics(null)}
-            onSave={async (topicIds) => {
-              try {
-                await updateLinkTopics(editingTopics.id, topicIds);
-                setEditingTopics(null);
-                setLinks(prev => prev.map(link =>
-                  link.id === editingTopics.id
-                    ? { ...link, topic_ids: topicIds }
-                    : link
-                ));
-              } catch (err) {
-                console.error('Error updating topics:', err);
-                setError('Failed to update topics');
-              }
-            }}
+        {editingLink && (
+          <EditLinkModal
+            isOpen={true}
+            onClose={() => setEditingLink(null)}
+            linkId={editingLink.id}
+            onEditComplete={handleEditComplete}
           />
         )}
 

@@ -20,6 +20,7 @@ import { PublicDirectoryPage } from './pages/PublicDirectoryPage';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PublicLayout } from './components/PublicLayout';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { Toaster } from 'react-hot-toast';
 
 export function App() {
   const initialize = useAuthStore(state => state.initialize);
@@ -48,34 +49,37 @@ export function App() {
   }, [initialize]);
 
   return (
-    <HelmetProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<PublicLayout />}>
-            <Route path="/directory" element={<PublicDirectoryPage />} />
-            <Route path="/supercurations/public/:slug" element={<PublicSupercurationPage />} />
-            <Route path="/" element={<LandingPage />} />
-          </Route>
+    <>
+      <Toaster position="top-right" />
+      <HelmetProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              <Route path="/directory" element={<PublicDirectoryPage />} />
+              <Route path="/supercurations/public/:slug" element={<PublicSupercurationPage />} />
+              <Route path="/" element={<LandingPage />} />
+            </Route>
 
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-          </Route>
+            <Route element={<AuthLayout />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+            </Route>
 
-          <Route element={<ProtectedLayout />}>
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/saved" element={<SavedPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/supercurations" element={<SupercurationsPage />} />
-            <Route path="/supercurations/new" element={<NewSupercurationPage />} />
-            <Route path="/supercurations/:id" element={<SupercurationDetailPage />} />
-            <Route path="/profile/:id" element={<ProfilePage />} />
-          </Route>
+            <Route element={<ProtectedLayout />}>
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/saved" element={<SavedPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/supercurations" element={<SupercurationsPage />} />
+              <Route path="/supercurations/new" element={<NewSupercurationPage />} />
+              <Route path="/supercurations/:id" element={<SupercurationDetailPage />} />
+              <Route path="/profile/:id" element={<ProfilePage />} />
+            </Route>
 
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-        <OfflineIndicator />
-      </BrowserRouter>
-    </HelmetProvider>
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+          <OfflineIndicator />
+        </BrowserRouter>
+      </HelmetProvider>
+    </>
   );
 }
