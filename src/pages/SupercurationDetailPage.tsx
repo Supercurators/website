@@ -307,17 +307,29 @@ export function SupercurationDetailPage() {
       title: string;
       description: string;
       thumbnail_url?: string;
-    }
+    },
+    supercurationTags?: string[]
   ) => {
-    if (!editingLink?.id) return;
+    if (!editingLink?.id || !id) return;
 
     try {
-      await updateLink(editingLink.id, {
+      // Prepare the update data
+      const updateData: any = {
         ...postData,
         emoji_tags: selectedEmojis,
         topic_ids: selectedTopics,
-        is_original_content: isOriginal
-      });
+        is_original_content: isOriginal,
+      };
+
+      // If supercuration tags were provided, update them
+      if (supercurationTags) {
+        updateData.supercuration_tags = {
+          ...(editingLink.supercuration_tags || {}),
+          [id]: supercurationTags
+        };
+      }
+
+      await updateLink(editingLink.id, updateData);
 
       // Update local state
       setLinks(prev => prev.map(link =>
@@ -328,6 +340,10 @@ export function SupercurationDetailPage() {
               emoji_tags: selectedEmojis,
               topic_ids: selectedTopics,
               is_original_content: isOriginal,
+              supercuration_tags: {
+                ...(link.supercuration_tags || {}),
+                [id]: supercurationTags || link.supercuration_tags?.[id] || []
+              },
               updated_at: new Date().toISOString(),
             }
           : link
@@ -796,7 +812,7 @@ export function SupercurationDetailPage() {
         </div>
       )}
 
-      {editingLink && (
+      {editingLink && id && (
         <EmojiTagSelector
           suggestedTags={[]}
           onClose={() => setEditingLink(null)}
@@ -811,6 +827,13 @@ export function SupercurationDetailPage() {
           initialEmojis={editingLink.emoji_tags || []}
           initialTopics={editingLink.topic_ids || []}
           initialIsOriginal={editingLink.is_original_content || false}
+          supercurationId={id}
+          supercurationTags={supercuration.tagCategories?.map(cat => cat.tags) || []}
+          initialSupercurationTags={
+            editingLink.supercuration_tags && id in editingLink.supercuration_tags 
+              ? editingLink.supercuration_tags[id] 
+              : []
+          }
         />
       )}
     </div>

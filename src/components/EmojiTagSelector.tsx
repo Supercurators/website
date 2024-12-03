@@ -11,7 +11,7 @@ interface EmojiTagSelectorProps {
     title: string;
     description: string;
     thumbnail_url?: string;
-  }) => void;
+  }, supercurationTags?: string[]) => void;
   preview: {
     title: string;
     description: string;
@@ -22,6 +22,9 @@ interface EmojiTagSelectorProps {
   initialEmojis?: string[];
   initialTopics?: string[];
   initialIsOriginal?: boolean;
+  supercurationId?: string;
+  supercurationTags?: string[][];  // Array of tag categories
+  initialSupercurationTags?: string[];
 }
 
 const FORMATS = [
@@ -45,6 +48,9 @@ export function EmojiTagSelector({
   initialEmojis = [],
   initialTopics = [],
   initialIsOriginal = false,
+  supercurationId,
+  supercurationTags = [],
+  initialSupercurationTags = [],
 }: EmojiTagSelectorProps) {
   const { topics, addTopic } = useCategoryStore();
   const [selectedEmojis, setSelectedEmojis] = useState<string[]>(initialEmojis);
@@ -60,6 +66,9 @@ export function EmojiTagSelector({
     imageType: 'url' as 'url' | 'upload'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedSupercurationTags, setSelectedSupercurationTags] = useState<string[]>(
+    initialSupercurationTags
+  );
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,15 +96,57 @@ export function EmojiTagSelector({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      await onSave(selectedEmojis, selectedTopics, isOriginalContent, {
-        ...(postData.url ? { url: postData.url } : {}),
-        title: postData.title,
-        description: postData.description,
-        thumbnail_url: postData.thumbnail_url
-      });
+      await onSave(
+        selectedEmojis, 
+        selectedTopics, 
+        isOriginalContent, 
+        {
+          ...(postData.url ? { url: postData.url } : {}),
+          title: postData.title,
+          description: postData.description,
+          thumbnail_url: postData.thumbnail_url
+        },
+        supercurationId ? selectedSupercurationTags : undefined
+      );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const renderSupercurationTags = () => {
+    if (!supercurationId || !supercurationTags.length) return null;
+
+    return (
+      <div className="mt-6">
+        <h4 className="text-sm font-medium text-gray-700 mb-3">
+          Supercuration Tags
+        </h4>
+        {supercurationTags.map((category, index) => (
+          <div key={index} className="mb-4">
+            <div className="flex flex-wrap gap-2">
+              {category.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setSelectedSupercurationTags(prev =>
+                    prev.includes(tag)
+                      ? prev.filter(t => t !== tag)
+                      : [...prev, tag]
+                  )}
+                  className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm ${
+                    selectedSupercurationTags.includes(tag)
+                      ? 'bg-blue-100 text-blue-800 ring-1 ring-blue-700'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -331,6 +382,8 @@ export function EmojiTagSelector({
               ))}
             </div>
           </div>
+
+          {renderSupercurationTags()}
 
           <div className="mt-6 flex justify-end space-x-3">
             <button

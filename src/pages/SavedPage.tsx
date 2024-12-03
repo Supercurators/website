@@ -8,6 +8,8 @@ import { TopicManager } from '../components/TopicManager';
 import { EditLinkModal } from '../components/EditLinkModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { TopicFilter } from '../components/TopicFilter';
+import { LinkPreviewInput } from '../components/LinkPreviewInput';
+import { AIUrlExtractor } from '../components/AIUrlExtractor';
 import type { Link, Topic } from '../types';
 
 export function SavedPage() {
@@ -29,6 +31,7 @@ export function SavedPage() {
   const [editingLink, setEditingLink] = useState<Link | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [formatFilter, setFormatFilter] = useState<string | null>(null);
+  const [showAIExtractor, setShowAIExtractor] = useState(false);
 
   const FORMATS = [
     { emoji: '📝', label: 'Article' },
@@ -187,6 +190,28 @@ export function SavedPage() {
     }
   };
 
+  const handleShare = async (linkData: Partial<Link>) => {
+    try {
+      // You'll need to implement the actual sharing logic here
+      // This could involve adding to Firestore and updating local state
+      const newLink = {
+        ...linkData,
+        created_at: new Date().toISOString(),
+        created_by: auth.currentUser?.uid,
+        likes: 0,
+        liked: false,
+      } as Link;
+
+      // Update the links state with the new link
+      setLinks(prev => [newLink, ...prev]);
+      
+      // Reset the AI extractor if it was open
+      setShowAIExtractor(false);
+    } catch (error) {
+      console.error('Error sharing link:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -197,6 +222,24 @@ export function SavedPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4">
+      <div className="mb-8">
+        <LinkPreviewInput onShare={handleShare} />
+        <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
+          <button
+            onClick={() => setShowAIExtractor(true)}
+            className="text-blue-600 hover:text-blue-700"
+          >
+            Import multiple URLs from text or image
+          </button>
+        </div>
+
+        {showAIExtractor && (
+          <div className="mt-4">
+            <AIUrlExtractor />
+          </div>
+        )}
+      </div>
+
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">My Feed</h1>
