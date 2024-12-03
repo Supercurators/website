@@ -5,10 +5,10 @@ import { useCategoryStore } from '../store/categoryStore';
 import { auth, db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, DocumentData } from 'firebase/firestore';
 import { TopicManager } from '../components/TopicManager';
-import { EditLinkModal } from '../components/EditLinkModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { TopicFilter } from '../components/TopicFilter';
 import { ShareForm } from '../components/ShareForm';
+import { EmojiTagSelector } from '../components/EmojiTagSelector';
 import type { Link, Topic } from '../types';
 
 interface FirestoreLink {
@@ -210,9 +210,27 @@ export function SavedPage() {
     return filtered;
   };
 
-  const handleEditComplete = async (updatedLink: Link) => {
+  const handleEditComplete = async (
+    selectedEmojis: string[],
+    selectedTopics: string[],
+    isOriginal: boolean,
+    postData: {
+      url?: string;
+      title: string;
+      description: string;
+      thumbnail_url?: string;
+    }
+  ) => {
     try {
       // Immediately update the link in the current state
+      const updatedLink: Link = {
+        ...links.find(l => l.id === editingLink?.id)!,
+        ...postData,
+        emoji_tags: selectedEmojis,
+        topic_ids: selectedTopics,
+        is_original_content: isOriginal,
+      };
+
       setLinks(prevLinks => 
         prevLinks.map(link => 
           link.id === updatedLink.id ? updatedLink : link
@@ -476,11 +494,22 @@ export function SavedPage() {
         )}
 
         {editingLink && (
-          <EditLinkModal
-            isOpen={true}
+          <EmojiTagSelector
             onClose={() => setEditingLink(null)}
-            linkId={editingLink.id}
-            onEditComplete={handleEditComplete}
+            onSave={(selectedEmojis, selectedTopics, isOriginal, postData) => 
+              handleEditComplete(selectedEmojis, selectedTopics, isOriginal, postData)
+            }
+            preview={{
+              url: editingLink.url,
+              title: editingLink.title,
+              description: editingLink.description,
+              thumbnail_url: editingLink.thumbnail_url,
+            }}
+            suggestedTags={[]}
+            isEditing={true}
+            initialEmojis={editingLink.emoji_tags}
+            initialTopics={editingLink.topic_ids}
+            initialIsOriginal={editingLink.is_original_content}
           />
         )}
 
