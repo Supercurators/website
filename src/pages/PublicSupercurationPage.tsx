@@ -7,7 +7,6 @@ import { db } from '../lib/firebase';
 import { DirectoryFilters } from '../components/directory/DirectoryFilters';
 import { NewsletterSignup } from '../components/NewsletterSignup';
 import type { Supercuration, Link as LinkType } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 
 export function PublicSupercurationPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -87,24 +86,10 @@ export function PublicSupercurationPage() {
         const linksQuery = query(linksRef, where('supercuration_ids', 'array-contains', supercurationData.id));
         const linksSnapshot = await getDocs(linksQuery);
 
-        const linksData = linksSnapshot.docs.map(doc => {
-          const data = doc.data();
-          // If id is empty or undefined, generate a new UUID
-          const id = doc.id || uuidv4();
-          return {
-            id,
-            ...data
-          } as LinkType;
-        }).map(link => {
-          // Double check for any empty IDs in the data
-          if (!link.id || link.id.trim() === '') {
-            return {
-              ...link,
-              id: uuidv4()
-            };
-          }
-          return link;
-        });
+        const linksData = linksSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }) as LinkType);
 
         console.log('All fetched links:', linksData.map(link => ({
           id: link.id,

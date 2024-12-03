@@ -16,7 +16,6 @@
     "firebase": "^10.8.0",
     "lucide-react": "^0.344.0",
     "node-html-parser": "^6.1.12",
-    "nuqs": "^2.2.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet-async": "^2.0.4",
@@ -25,7 +24,6 @@
     "react-router-dom": "^6.21.3",
     "tesseract.js": "^5.0.5",
     "url-regex-safe": "^4.0.0",
-    "uuid": "^11.0.3",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
