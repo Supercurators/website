@@ -121,47 +121,41 @@ export function PublicSupercurationPage() {
     : links;
 
   const getFilteredLinks = () => {
-    let filtered = [...filteredLinks];
+    // Start with filtered links based on selected filters
+    let filtered = [...new Set(filteredLinks)]; // Ensure no duplicates in initial array
 
     // Filter by format
     if (formatFilter) {
       filtered = filtered.filter(link => {
-        if (!Array.isArray(link.emoji_tags)) {
-          return false;
-        }
-        return link.emoji_tags.includes(formatFilter);
+        const emojiTags = Array.isArray(link.emoji_tags) ? link.emoji_tags : [];
+        return emojiTags.includes(formatFilter);
       });
     }
 
     // Filter by time
+    const now = new Date();
     if (timeFilter !== 'all') {
-      const now = new Date();
-      switch (timeFilter) {
-        case 'today':
-          filtered = filtered.filter(link => {
-            const date = new Date(link.created_at);
-            return date.toDateString() === now.toDateString();
-          });
-          break;
-        case 'week':
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          filtered = filtered.filter(link => 
-            new Date(link.created_at) >= weekAgo
-          );
-          break;
-        case 'month':
-          const monthAgo = new Date();
-          monthAgo.setMonth(monthAgo.getMonth() - 1);
-          filtered = filtered.filter(link => 
-            new Date(link.created_at) >= monthAgo
-          );
-          break;
-      }
+      filtered = filtered.filter(link => {
+        const linkDate = new Date(link.created_at);
+        switch (timeFilter) {
+          case 'today':
+            return linkDate.toDateString() === now.toDateString();
+          case 'week':
+            const weekAgo = new Date(now);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return linkDate >= weekAgo;
+          case 'month':
+            const monthAgo = new Date(now);
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            return linkDate >= monthAgo;
+          default:
+            return true;
+        }
+      });
     }
 
     // Sort links
-    filtered.sort((a, b) => {
+    return filtered.sort((a, b) => {
       switch (sortBy) {
         case 'oldest':
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -172,8 +166,6 @@ export function PublicSupercurationPage() {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
-
-    return filtered;
   };
 
   if (loading) {
