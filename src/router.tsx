@@ -6,12 +6,21 @@ const rootRoute = rootRouteWithContext<{}>()({
   component: () => <Outlet />,
 });
 
+// Define search params interface
+interface SupercurationSearchParams {
+  view?: string;
+  filter?: string;
+}
+
 // Define the supercuration route
 const supercurationRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/s/$slug',
   component: PublicSupercurationPage,
-  validateSearch: (search: Record<string, unknown>) => ({}),
+  validateSearch: (search: Record<string, unknown>): SupercurationSearchParams => ({
+    view: search.view as string | undefined,
+    filter: search.filter as string | undefined,
+  }),
   loader: async ({ params: { slug } }) => {
     // Add validation to ensure slug exists
     if (!slug) {
