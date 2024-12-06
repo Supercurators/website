@@ -346,6 +346,11 @@ export function SupercurationDetailPage() {
     );
   });
 
+  const handleAddNewLink = (newLink: LinkType) => {
+    setLinks(prev => [...prev, newLink]);
+    setShowAddResource(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -676,7 +681,10 @@ export function SupercurationDetailPage() {
 
                 <div>
                   <h3 className="font-medium text-gray-900 mb-4">Add a new link</h3>
-                  <ShareForm supercurationId={id || undefined} />
+                  <ShareForm 
+                    supercurationId={id || undefined} 
+                    onLinkAdded={handleAddNewLink}
+                  />
                 </div>
               </div>
             </div>

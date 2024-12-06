@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Tag, Star, Upload, Link as LinkIcon } from 'lucide-react';
 import { useCategoryStore } from '../../store/categoryStore';
+import { useSupercurationStore } from '../../store/supercurationStore';
+import { auth } from '../../lib/firebase';
 
 // Update onSave prop type to make url optional
 interface LinkContentEditProps {
@@ -11,7 +13,7 @@ interface LinkContentEditProps {
     title: string;
     description: string;
     thumbnail_url?: string;
-  }, supercurationTags?: string[], supercurationId?: string) => void;
+  }, supercurationTags?: string[], supercurationId?: string, selectedSupercurations?: string[]) => void;
   preview: {
     title: string;
     description: string;
@@ -25,6 +27,8 @@ interface LinkContentEditProps {
   supercurationId?: string;
   supercurationTags?: string[][];  // Array of tag categories
   initialSupercurationTags?: string[];
+  selectedSupercurations?: string[];
+  initialSelectedSupercurations?: string[];
 }
 
 const FORMATS = [
@@ -51,8 +55,10 @@ export function LinkContentEdit({
   supercurationId,
   supercurationTags = [],
   initialSupercurationTags = [],
+  initialSelectedSupercurations = [],
 }: LinkContentEditProps) {
   const { topics, addTopic } = useCategoryStore();
+  const { supercurations, fetchSupercurations } = useSupercurationStore();
   const [selectedEmojis, setSelectedEmojis] = useState<string[]>(initialEmojis);
   const [selectedTopics, setSelectedTopics] = useState<string[]>(initialTopics);
   const [isOriginalContent, setIsOriginalContent] = useState(initialIsOriginal);
@@ -68,6 +74,9 @@ export function LinkContentEdit({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSupercurationTags, setSelectedSupercurationTags] = useState<string[]>(
     initialSupercurationTags
+  );
+  const [selectedSupercurationIds, setSelectedSupercurationIds] = useState<string[]>(
+    initialSelectedSupercurations
   );
 
   console.error('supercurationId in EmojiTagSelector', supercurationId);
@@ -108,7 +117,8 @@ export function LinkContentEdit({
           thumbnail_url: postData.thumbnail_url
         },
         supercurationId ? selectedSupercurationTags : undefined,
-        supercurationId
+        supercurationId,
+        !supercurationId ? selectedSupercurationIds : undefined
       );
     } finally {
       setIsSubmitting(false);
@@ -151,264 +161,350 @@ export function LinkContentEdit({
     );
   };
 
+  useEffect(() => {
+    fetchSupercurations();
+  }, [fetchSupercurations]);
+
+  const renderSupercurationSelector = () => {
+    if (supercurationId) return null;
+
+    const currentUser = auth.currentUser;
+    const userSupercurations = supercurations.filter(
+      (supercuration) => supercuration.user?.id === currentUser?.uid
+    );
+
+    if (userSupercurations.length === 0) {
+      return (
+        <div className="mb-6">
+          <p className="text-sm text-gray-500">
+            You haven't created any supercurations yet.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mb-6">
+        <h4 className="text-sm font-medium text-gray-700 mb-3">
+          Add to Supercurations
+        </h4>
+        <div className="flex flex-wrap gap-2">
+          {userSupercurations.map((supercuration) => (
+            <button
+              key={supercuration.id}
+              type="button"
+              onClick={() => setSelectedSupercurationIds(prev =>
+                prev.includes(supercuration.id)
+                  ? prev.filter(id => id !== supercuration.id)
+                  : [...prev, supercuration.id]
+              )}
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm ${
+                selectedSupercurationIds.includes(supercuration.id)
+                  ? 'bg-blue-100 text-blue-800 ring-1 ring-blue-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {supercuration.title}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    // Disable scroll on body when modal opens
+    document.body.style.overflow = 'hidden';
+    
+    // Re-enable scroll when modal closes
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose} />
-        
-        <div className="relative w-full max-w-lg transform rounded-lg bg-white p-6 shadow-xl">
-          <div className="absolute right-4 top-4">
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-              <X className="h-6 w-6" />
+    <div className="fixed inset-0 z-50">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-gray-500/75 backdrop-blur-sm" 
+        onClick={onClose}
+      />
+      
+      {/* Modal Container */}
+      <div 
+        className="fixed inset-0 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        {/* Modal Content */}
+        <div 
+          className="relative w-full max-w-2xl bg-white rounded-xl shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header - Fixed */}
+          <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white rounded-t-xl">
+            <h3 className="text-lg font-semibold text-gray-900">Preview & Share</h3>
+            <button 
+              onClick={onClose} 
+              className="p-1 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Preview & Share</h3>
+          {/* Content - Scrollable */}
+          <div className="px-6 py-4 max-h-[calc(100vh-12rem)] overflow-y-auto">
+            {/* Post Editor */}
+            <div className="space-y-5">
+              {/* Title Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={postData.title}
+                  onChange={(e) => setPostData({ ...postData, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
 
-          {/* Post Editor */}
-          <div className="mb-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Title
-              </label>
-              <input
-                type="text"
-                value={postData.title}
-                onChange={(e) => setPostData({ ...postData, title: e.target.value })}
-                className="w-full px-3 py-2 border rounded-md"
-                required
-              />
-            </div>
+              {/* Description Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={postData.description}
+                  onChange={(e) => setPostData({ ...postData, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                value={postData.description}
-                onChange={(e) => setPostData({ ...postData, description: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border rounded-md"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                URL (optional)
-              </label>
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
+              {/* URL Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  URL (optional)
+                </label>
+                <div className="relative">
                   <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="url"
                     value={postData.url}
                     onChange={(e) => setPostData({ ...postData, url: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2 border rounded-md"
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter URL (optional)"
                   />
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Thumbnail Image
-              </label>
-              
-              <div className="flex gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => setPostData(prev => ({ ...prev, imageType: 'url' }))}
-                  className={`flex-1 py-2 px-3 text-sm rounded-md flex items-center justify-center gap-2 ${
-                    postData.imageType === 'url'
-                      ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-700'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  <LinkIcon className="w-4 h-4" />
-                  URL
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPostData(prev => ({ ...prev, imageType: 'upload' }))}
-                  className={`flex-1 py-2 px-3 text-sm rounded-md flex items-center justify-center gap-2 ${
-                    postData.imageType === 'upload'
-                      ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-700'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload
-                </button>
-              </div>
-
-              {postData.imageType === 'url' ? (
-                <input
-                  type="url"
-                  placeholder="Enter image URL"
-                  value={postData.thumbnail_url}
-                  onChange={(e) => setPostData({ ...postData, thumbnail_url: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-md"
-                />
-              ) : (
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="w-full px-3 py-2 border rounded-md"
-                />
-              )}
-
-              {postData.thumbnail_url && (
-                <div className="mt-2">
-                  <img
-                    src={postData.thumbnail_url}
-                    alt="Preview"
-                    className="w-full h-32 object-cover rounded-md"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Original Content Checkbox */}
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isOriginalContent}
-                onChange={(e) => setIsOriginalContent(e.target.checked)}
-                className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
-              />
-              <Star className="w-4 h-4 text-amber-600" />
-              <span className="text-sm font-medium text-amber-800">
-                This is my original content
-              </span>
-            </label>
-            <p className="mt-1 text-xs text-amber-600 ml-6">
-              Check this if you created this content (e.g., your blog post, podcast, video)
-            </p>
-          </div>
-
-          {/* Format Selection */}
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Format</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {FORMATS.map(({ emoji, label }) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setSelectedEmojis(prev =>
-                    prev.includes(emoji)
-                      ? prev.filter(e => e !== emoji)
-                      : [emoji]
-                  )}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
-                    selectedEmojis.includes(emoji)
-                      ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <span>{emoji}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Topics */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-medium text-gray-700">Topics</h4>
-              <button
-                type="button"
-                onClick={() => setShowNewTopicForm(!showNewTopicForm)}
-                className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-              >
-                <Tag className="w-4 h-4" />
-                Add Topic
-              </button>
-            </div>
-
-            {showNewTopicForm && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Topic name"
-                    value={newTopic.name}
-                    onChange={(e) => setNewTopic({ ...newTopic, name: e.target.value })}
-                    className="flex-1 px-3 py-1 text-sm border rounded"
-                  />
-                  <input
-                    type="color"
-                    value={newTopic.color}
-                    onChange={(e) => setNewTopic({ ...newTopic, color: e.target.value })}
-                    className="w-8 h-8 p-1 border rounded cursor-pointer"
-                  />
+              {/* Thumbnail Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Thumbnail Image
+                </label>
+                
+                <div className="flex gap-2 mb-3">
                   <button
                     type="button"
-                    onClick={handleAddNewTopic}
-                    className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                    onClick={() => setPostData(prev => ({ ...prev, imageType: 'url' }))}
+                    className={`flex-1 py-2 px-3 text-sm rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                      postData.imageType === 'url'
+                        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-700'
+                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
                   >
-                    Add
+                    <LinkIcon className="w-4 h-4" />
+                    URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPostData(prev => ({ ...prev, imageType: 'upload' }))}
+                    className={`flex-1 py-2 px-3 text-sm rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                      postData.imageType === 'upload'
+                        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-700'
+                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload
                   </button>
                 </div>
-              </div>
-            )}
 
-            <div className="flex flex-wrap gap-2">
-              {topics.map((topic) => (
-                <button
-                  key={topic.id}
-                  type="button"
-                  onClick={() => setSelectedTopics(prev =>
-                    prev.includes(topic.id)
-                      ? prev.filter(id => id !== topic.id)
-                      : [...prev, topic.id]
-                  )}
-                  className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm ${
-                    selectedTopics.includes(topic.id)
-                      ? 'ring-1'
-                      : 'hover:bg-opacity-20'
-                  }`}
-                  style={{
-                    backgroundColor: `${topic.color}15`,
-                    color: topic.color,
-                    borderColor: selectedTopics.includes(topic.id) ? topic.color : 'transparent'
-                  }}
-                >
-                  {topic.name}
-                </button>
-              ))}
+                {postData.imageType === 'url' ? (
+                  <input
+                    type="url"
+                    placeholder="Enter image URL"
+                    value={postData.thumbnail_url}
+                    onChange={(e) => setPostData({ ...postData, thumbnail_url: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-md"
+                  />
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="w-full px-3 py-2 border rounded-md"
+                  />
+                )}
+
+                {postData.thumbnail_url && (
+                  <div className="mt-2">
+                    <img
+                      src={postData.thumbnail_url}
+                      alt="Preview"
+                      className="w-full h-32 object-cover rounded-md"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Original Content Section */}
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isOriginalContent}
+                    onChange={(e) => setIsOriginalContent(e.target.checked)}
+                    className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                  />
+                  <Star className="w-4 h-4 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-800">
+                    This is my original content
+                  </span>
+                </label>
+                <p className="mt-1 text-xs text-amber-600 ml-6">
+                  Check this if you created this content
+                </p>
+              </div>
+
+              {/* Format Section */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Format</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {FORMATS.map(({ emoji, label }) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setSelectedEmojis(prev =>
+                        prev.includes(emoji)
+                          ? prev.filter(e => e !== emoji)
+                          : [emoji]
+                      )}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        selectedEmojis.includes(emoji)
+                          ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-700'
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span>{emoji}</span>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Topics */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-gray-700">Topics</h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewTopicForm(!showNewTopicForm)}
+                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <Tag className="w-4 h-4" />
+                    Add Topic
+                  </button>
+                </div>
+
+                {showNewTopicForm && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Topic name"
+                        value={newTopic.name}
+                        onChange={(e) => setNewTopic({ ...newTopic, name: e.target.value })}
+                        className="flex-1 px-3 py-1 text-sm border rounded"
+                      />
+                      <input
+                        type="color"
+                        value={newTopic.color}
+                        onChange={(e) => setNewTopic({ ...newTopic, color: e.target.value })}
+                        className="w-8 h-8 p-1 border rounded cursor-pointer"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewTopic}
+                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  {topics.map((topic) => (
+                    <button
+                      key={topic.id}
+                      type="button"
+                      onClick={() => setSelectedTopics(prev =>
+                        prev.includes(topic.id)
+                          ? prev.filter(id => id !== topic.id)
+                          : [...prev, topic.id]
+                      )}
+                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm ${
+                        selectedTopics.includes(topic.id)
+                          ? 'ring-1'
+                          : 'hover:bg-opacity-20'
+                      }`}
+                      style={{
+                        backgroundColor: `${topic.color}15`,
+                        color: topic.color,
+                        borderColor: selectedTopics.includes(topic.id) ? topic.color : 'transparent'
+                      }}
+                    >
+                      {topic.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {renderSupercurationSelector()}
+
+              {renderSupercurationTags()}
             </div>
           </div>
 
-          {renderSupercurationTags()}
-
-          <div className="mt-6 flex justify-end space-x-3">
-            <button
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  Updating...
-                </>
-              ) : (
-                isEditing ? 'Update' : 'Share'
-              )}
-            </button>
+          {/* Footer - Fixed */}
+          <div className="sticky bottom-0 px-6 py-4 border-t border-gray-100 bg-white rounded-b-xl">
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Updating...
+                  </>
+                ) : (
+                  isEditing ? 'Update' : 'Share'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

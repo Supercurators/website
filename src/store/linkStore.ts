@@ -27,7 +27,7 @@ interface LinkState {
   error: string | null;
   isOffline: boolean;
   fetchLinks: () => Promise<void>;
-  addLink: (data: AddLinkData) => Promise<void>;
+  addLink: (data: AddLinkData) => Promise<Link>;
   updateLink: (id: string, data: Partial<Link>) => Promise<void>;
   removeLink: (id: string) => Promise<void>;
   toggleLike: (id: string) => Promise<void>;
@@ -107,7 +107,7 @@ export const useLinkStore = create<LinkState>((set, get) => ({
     }
   },
 
-  addLink: async (data: AddLinkData) => {
+  addLink: async (data: AddLinkData): Promise<Link> => {
     try {
       const currentUser = auth.currentUser;
       if (!currentUser) {
@@ -156,6 +156,8 @@ export const useLinkStore = create<LinkState>((set, get) => ({
         }
         await batch.commit();
       }
+
+      return newLink;
     } catch (error) {
       console.error('Error sharing link:', error);
       throw error;
