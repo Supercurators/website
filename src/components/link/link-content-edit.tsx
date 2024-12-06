@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { X, Tag, Star, Upload, Link as LinkIcon } from 'lucide-react';
-import { useCategoryStore } from '../store/categoryStore';
+import { useCategoryStore } from '../../store/categoryStore';
 
 // Update onSave prop type to make url optional
-interface EmojiTagSelectorProps {
+interface LinkContentEditProps {
   suggestedTags: string[];
   onClose: () => void;
   onSave: (selectedEmojis: string[], selectedTopics: string[], isOriginal: boolean, postData: {
@@ -11,7 +11,7 @@ interface EmojiTagSelectorProps {
     title: string;
     description: string;
     thumbnail_url?: string;
-  }, supercurationTags?: string[]) => void;
+  }, supercurationTags?: string[], supercurationId?: string) => void;
   preview: {
     title: string;
     description: string;
@@ -40,7 +40,7 @@ const FORMATS = [
   { emoji: '🔗', label: 'Other' }
 ];
 
-export function EmojiTagSelector({ 
+export function LinkContentEdit({ 
   onClose, 
   onSave, 
   preview, 
@@ -51,7 +51,7 @@ export function EmojiTagSelector({
   supercurationId,
   supercurationTags = [],
   initialSupercurationTags = [],
-}: EmojiTagSelectorProps) {
+}: LinkContentEditProps) {
   const { topics, addTopic } = useCategoryStore();
   const [selectedEmojis, setSelectedEmojis] = useState<string[]>(initialEmojis);
   const [selectedTopics, setSelectedTopics] = useState<string[]>(initialTopics);
@@ -70,6 +70,7 @@ export function EmojiTagSelector({
     initialSupercurationTags
   );
 
+  console.error('supercurationId in EmojiTagSelector', supercurationId);
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -106,7 +107,8 @@ export function EmojiTagSelector({
           description: postData.description,
           thumbnail_url: postData.thumbnail_url
         },
-        supercurationId ? selectedSupercurationTags : undefined
+        supercurationId ? selectedSupercurationTags : undefined,
+        supercurationId
       );
     } finally {
       setIsSubmitting(false);

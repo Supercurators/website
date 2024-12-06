@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X, Edit2 } from 'lucide-react';
-import { useCategoryStore, TopicCategory } from '../store/categoryStore';
+import { useCategoryStore } from '../store/categoryStore';
+import { TopicCategory } from '../types';
 
 interface CategoryManagerProps {
   isOpen: boolean;

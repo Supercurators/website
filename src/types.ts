@@ -42,6 +42,14 @@ export interface Supercuration {
   tagCategories: TagCategory[];
   subscribers?: string[];
 }
+export interface TopicCategory {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+}
+
+
 
 export interface Link {
   id: string;
@@ -90,15 +98,4 @@ export interface Subscription {
   subscriber_email: string;
   subscriber_name: string;
   created_at: string;
-}
-
-export interface Topic {
-  id: string;
-  name: string;
-  color: string;
-  count: number;
-}
-
-export interface TopicCategory extends Topic {
-  // Any additional properties specific to TopicCategory
 }

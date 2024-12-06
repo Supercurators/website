@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { initFirebase } from './lib/firebase';
 import { useAuthStore } from './store/authStore';
-import { AuthLayout } from './components/AuthLayout';
-import { ProtectedLayout } from './components/ProtectedLayout';
+import { AuthLayout } from './components/layout/AuthLayout';
+import { ProtectedLayout } from './components/layout/ProtectedLayout';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -17,8 +17,7 @@ import { NewSupercurationPage } from './pages/NewSupercurationPage';
 import { SupercurationDetailPage } from './pages/SupercurationDetailPage';
 import { PublicSupercurationPage } from './pages/PublicSupercurationPage';
 import { PublicDirectoryPage } from './pages/PublicDirectoryPage';
-import { OfflineIndicator } from './components/OfflineIndicator';
-import { PublicLayout } from './components/PublicLayout';
+import { PublicLayout } from './components/layout/PublicLayout';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { Toaster } from 'react-hot-toast';
 
@@ -77,7 +76,6 @@ export function App() {
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-          <OfflineIndicator />
         </BrowserRouter>
       </HelmetProvider>
     </>

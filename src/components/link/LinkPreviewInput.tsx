@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LinkIcon, Loader } from 'lucide-react';
-import { getLinkPreview } from '../lib/linkPreview';
+import { getLinkPreview } from '../../lib/linkPreview';
 
 interface LinkPreviewInputProps {
   onShare: (data: {

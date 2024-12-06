@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { LogOut, Menu, X, Home, BookMarked, Library, Users } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
-import { ProfileSettings } from './ProfileSettings';
+import { useAuthStore } from './store/authStore';
+import { ProfileSettings } from './components/ProfileSettings';
 import { useState } from 'react';
 
 interface LayoutProps {

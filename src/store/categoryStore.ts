@@ -1,13 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-export interface TopicCategory {
-  id: string;
-  name: string;
-  color: string;
-  createdAt: string;
-}
-
+import { TopicCategory } from '../types';
 interface CategoryState {
   topics: TopicCategory[];
   addTopic: (name: string, color: string) => TopicCategory;

@@ -1,5 +1,5 @@
 import { Tag } from 'lucide-react';
-import { useCategoryStore } from '../store/categoryStore';
+import { useCategoryStore } from '../../store/categoryStore';
 import { useState } from 'react';
 
 export function ShareLink() {

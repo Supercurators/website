@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ExternalLink, Heart, Star, Clock, Tag, Edit2, Trash2 } from 'lucide-react';
+import { Clock, Tag } from 'lucide-react';
 import { useLinkStore } from '../store/linkStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { auth, db } from '../lib/firebase';
@@ -7,10 +7,11 @@ import { collection, query, where, orderBy, getDocs, doc, updateDoc } from 'fire
 import { TopicManager } from '../components/TopicManager';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { TopicFilter } from '../components/TopicFilter';
-import { ShareForm } from '../components/ShareForm';
-import { EmojiTagSelector } from '../components/EmojiTagSelector';
-import type { Link, Topic } from '../types';
+import { ShareForm } from '../components/link/ShareForm';
+import { LinkContentEdit } from '../components/link/link-content-edit';
+import type { Link } from '../types';
 import { toast } from 'react-hot-toast';
+import { LinkDisplay } from '../components/link/link-display';
 
 interface FirestoreLink {
   url: string;
@@ -29,14 +30,10 @@ interface FirestoreLink {
   reposts_count?: number;
 }
 
+
 export function SavedPage() {
-  const { topics: rawTopics } = useCategoryStore();
-  const topics = rawTopics.map(topic => ({
-    id: topic.id,
-    name: topic.name,
-    color: topic.color,
-    count: 0,
-  })) as Topic[];
+  const { topics } = useCategoryStore();
+
   const { toggleLike, removeLink, updateLink } = useLinkStore();
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
@@ -296,7 +293,7 @@ export function SavedPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4">
-      <ShareForm />
+      <ShareForm supercurationId={undefined} />
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -404,98 +401,16 @@ export function SavedPage() {
             </p>
           ) : (
             getFilteredLinks().map((link) => (
-              <div
+              <LinkDisplay
                 key={link.id}
-                className="bg-white rounded-lg shadow-sm overflow-hidden p-4"
-              >
-                <div className="flex gap-4">
-                  {link.thumbnail_url && (
-                    <img
-                      src={link.thumbnail_url}
-                      alt=""
-                      className="w-24 h-24 rounded object-cover"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <a
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-gray-900 hover:text-blue-600 block mb-1"
-                        >
-                          {link.title}
-                          <ExternalLink className="inline-block w-3.5 h-3.5 ml-1 opacity-50" />
-                        </a>
-                        <p className="text-sm text-gray-500 mb-2">
-                          {link.description}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-3 text-sm">
-                          <span className="text-gray-400">
-                            {new Date(link.created_at).toLocaleDateString()}
-                          </span>
-                          <button
-                            onClick={() => toggleLike(link.id)}
-                            className={`flex items-center gap-1 ${
-                              link.liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
-                            }`}
-                          >
-                            <Heart className={`w-3.5 h-3.5 ${link.liked ? 'fill-current' : ''}`} />
-                            <span>{link.likes}</span>
-                          </button>
-                          {link.is_original_content && (
-                            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-medium flex items-center gap-1">
-                              <Star className="w-3 h-3" />
-                              ORIGINAL
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setEditingLink(link)}
-                          className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-                          title="Edit link"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setShowDeleteConfirm(link.id)}
-                          className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {link.emoji_tags?.map((emoji) => (
-                        <span key={emoji} className="text-lg">
-                          {emoji}
-                        </span>
-                      ))}
-                      {link.topic_ids?.map((topicId) => {
-                        const topic = topics.find((t) => t.id === topicId);
-                        if (!topic) return null;
-                        return (
-                          <span
-                            key={topic.id}
-                            className="px-2 py-0.5 text-xs rounded-full"
-                            style={{
-                              backgroundColor: `${topic.color}15`,
-                              color: topic.color
-                            }}
-                          >
-                            {topic.name}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                link={link as Link}
+                topics={topics}
+                onToggleLike={toggleLike}
+                onEdit={setEditingLink}
+                onDelete={setShowDeleteConfirm}
+                editable={true}
+                showUserInfo={true}
+              />
             ))
           )}
         </div>
@@ -509,7 +424,7 @@ export function SavedPage() {
         )}
 
         {editingLink && (
-          <EmojiTagSelector
+          <LinkContentEdit
             onClose={() => setEditingLink(null)}
             onSave={(selectedEmojis, selectedTopics, isOriginal, postData) => 
               handleEditComplete(selectedEmojis, selectedTopics, isOriginal, postData)

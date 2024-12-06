@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
-import { Layout } from './Layout';
+import { useAuthStore } from '../../store/authStore';
+import { Layout } from '../../Layout';
 import { Loader } from 'lucide-react';
 
 export function ProtectedLayout() {

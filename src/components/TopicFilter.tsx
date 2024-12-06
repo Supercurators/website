@@ -61,7 +61,7 @@ export function TopicFilter({ topics, selectedTopics, onTopicToggle }: TopicFilt
                     >
                       <span>{topic.name}</span>
                       <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                        {topic.count}
+                        {}
                       </span>
                     </button>
                   ))
@@ -95,7 +95,7 @@ export function TopicFilter({ topics, selectedTopics, onTopicToggle }: TopicFilt
               >
                 <span>{topic.name}</span>
                 <span className="mx-1.5 opacity-50">·</span>
-                <span className="opacity-75">{topic.count}</span>
+                <span className="opacity-75">{}</span>
                 <X className="w-3 h-3 ml-1.5 opacity-50 group-hover:opacity-100" />
               </button>
             );

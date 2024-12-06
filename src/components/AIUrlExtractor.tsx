@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Upload, FileText, Loader, CheckSquare, Square, FolderPlus } from 'lucide-react';
 import { useSupercurationStore } from '../store/supercurationStore';
 import { useLinkStore } from '../store/linkStore';
-import { EmojiTagSelector } from './EmojiTagSelector';
+import { LinkContentEdit } from './link/link-content-edit';
 import { ExtractedLinkCard } from './ExtractedLinkCard';
 import { processImage, extractUrlsFromText, fetchLinkPreviews } from '../lib/urlExtractor';
 import type { ExtractedLink } from '../types';
@@ -252,7 +252,7 @@ export function AIUrlExtractor() {
 
       {/* Emoji Tag Selector Modal */}
       {showEmojiSelector && selectedLink && (
-        <EmojiTagSelector
+        <LinkContentEdit
           suggestedTags={[]}
           onClose={() => {
             setShowEmojiSelector(false);

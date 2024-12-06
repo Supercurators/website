@@ -35,6 +35,7 @@ interface LinkState {
   updateLinkTopics: (id: string, topics: string[]) => Promise<void>;
   updateLinkFormats: (id: string, formats: string[]) => Promise<void>;
   removeTopicFromLinks: (topicId: string) => Promise<void>;
+  refreshLinks: () => Promise<void>;
 }
 
 interface AddLinkData {
@@ -331,5 +332,13 @@ export const useLinkStore = create<LinkState>((set, get) => ({
 
   removeTopicFromLinks: async (_topicId: string) => {
     // Implementation needed
+  },
+
+  refreshLinks: async () => {
+    try {
+      await get().fetchLinks();
+    } catch (error) {
+      console.error('Error refreshing links:', error);
+    }
   }
 }));

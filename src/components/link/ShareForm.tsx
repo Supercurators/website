@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useLinkStore } from '../store/linkStore';
-import { AIUrlExtractor } from './AIUrlExtractor';
-import { EmojiTagSelector } from './EmojiTagSelector';
+import { useLinkStore } from '../../store/linkStore';
+import { AIUrlExtractor } from '../AIUrlExtractor';
+import { LinkContentEdit } from './link-content-edit';
 import { LinkPreviewInput } from './LinkPreviewInput';
 
 interface LinkPreview {
@@ -30,8 +30,9 @@ export function normalizeUrl(url: string): string {
   return url;
 }
 
-export function ShareForm() {
-  const { addLink } = useLinkStore();
+export function ShareForm({ supercurationId }: { supercurationId: string | undefined }) {
+  console.error('supercurationId', supercurationId);
+  const { addLink, refreshLinks } = useLinkStore();
   const [showEmojiSelector, setShowEmojiSelector] = useState(false);
   const [showAIExtractor, setShowAIExtractor] = useState(false);
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
@@ -66,8 +67,9 @@ export function ShareForm() {
 
       {/* Emoji Tag Selector Modal */}
       {showEmojiSelector && linkPreview && (
-        <EmojiTagSelector
+        <LinkContentEdit
           suggestedTags={[]}
+          supercurationId={supercurationId || undefined}
           onClose={() => {
             setShowEmojiSelector(false);
             setLinkPreview(null);
@@ -79,8 +81,10 @@ export function ShareForm() {
                 emoji_tags: selectedEmojis,
                 topic_ids: selectedTopics,
                 is_original_content: isOriginal,
-                publish_to_feed: true
+                publish_to_feed: true,
+                supercuration_ids: supercurationId ? [supercurationId] : undefined
               });
+              await refreshLinks();
               setShowEmojiSelector(false);
               setLinkPreview(null);
             } catch (err) {

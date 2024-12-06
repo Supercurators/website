@@ -6,12 +6,14 @@ import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/authStore';
 import { useSupercurationStore } from '../store/supercurationStore';
 import { TagCategoryEditor } from '../components/TagCategoryEditor';
-import { EmojiTagSelector } from '../components/EmojiTagSelector';
+import { LinkContentEdit } from '../components/link/link-content-edit';
 import type { Supercuration, Link as LinkType } from '../types';
 import { Link as RouterLink } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useLinkStore } from '../store/linkStore';
-import { ShareForm } from '../components/ShareForm';
+import { ShareForm } from '../components/link/ShareForm';
+import { LinkDisplay } from '../components/link/link-display';
+import { useCategoryStore } from '../store/categoryStore';
 
 export function SupercurationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +34,8 @@ export function SupercurationDetailPage() {
   const [isFetchingSaved, setIsFetchingSaved] = useState(false);
   const [editingLink, setEditingLink] = useState<LinkType | null>(null);
   const { updateLink } = useLinkStore();
+  const { topics } = useCategoryStore();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleTagFilter = (tag: string) => {
     setSelectedFilters(prev => {
@@ -298,6 +302,12 @@ export function SupercurationDetailPage() {
         };
       }
 
+      // Add current supercuration ID to supercuration_ids if not already present
+      const currentSupercurationIds = editingLink.supercuration_ids || [];
+      if (!currentSupercurationIds.includes(id)) {
+        updateData.supercuration_ids = [...currentSupercurationIds, id];
+      }
+
       await updateLink(editingLink.id, updateData);
 
       // Update local state
@@ -309,6 +319,7 @@ export function SupercurationDetailPage() {
               emoji_tags: selectedEmojis,
               topic_ids: selectedTopics,
               is_original_content: isOriginal,
+              supercuration_ids: updateData.supercuration_ids || link.supercuration_ids,
               supercuration_tags: {
                 ...(link.supercuration_tags || {}),
                 [id]: supercurationTags || link.supercuration_tags?.[id] || []
@@ -325,6 +336,15 @@ export function SupercurationDetailPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to update resource');
     }
   };
+
+  const filteredSavedLinks = savedLinks.filter(link => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      link.title.toLowerCase().includes(searchLower) ||
+      link.description.toLowerCase().includes(searchLower) ||
+      link.url?.toLowerCase().includes(searchLower)
+    );
+  });
 
   if (loading) {
     return (
@@ -537,79 +557,14 @@ export function SupercurationDetailPage() {
             </button>
           )}
           {filteredLinks.map((link) => (
-            <div
+            <LinkDisplay
               key={link.id}
-              className="block bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-            >
-              <div className="p-4">
-                <div className="flex gap-4">
-                  {link.thumbnail_url && (
-                    <img
-                      src={link.thumbnail_url}
-                      alt=""
-                      className="w-24 h-24 rounded object-cover flex-shrink-0"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <a
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
-                        >
-                          {link.title}
-                        </a>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {link.description}
-                        </p>
-                      </div>
-                      {isOwner && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditingLink(link)}
-                            className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100"
-                            title="Edit resource"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeletingResourceId(link.id)}
-                            className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
-                            title="Remove from supercuration"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {(link.supercuration_tags?.[id || ''] ?? []).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {(link.supercuration_tags?.[id || ''] ?? []).map((tag: string) => {
-                          const category = supercuration.tagCategories?.find(cat =>
-                            cat.tags.includes(tag)
-                          );
-                          if (!category) return null;
-                          return (
-                            <span
-                              key={tag}
-                              className="px-2 py-0.5 text-xs rounded-full"
-                              style={{
-                                backgroundColor: `${category.color}15`,
-                                color: category.color
-                              }}
-                            >
-                              {tag}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+              link={link}
+              topics={topics}
+              onToggleLike={() => {/* Implement like functionality if needed */}}
+              onEdit={() => setEditingLink(link)}
+              onDelete={() => setDeletingResourceId(link.id)}
+            />
           ))}
         </div>
       )}
@@ -659,17 +614,31 @@ export function SupercurationDetailPage() {
               <div className="space-y-6">
                 <div>
                   <h3 className="font-medium text-gray-900 mb-4">Add from your saved posts</h3>
+                  
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Search saved posts..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
                   <div className="space-y-3">
                     {isFetchingSaved ? (
                       <div className="flex justify-center py-4">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                       </div>
-                    ) : savedLinks.length === 0 ? (
+                    ) : filteredSavedLinks.length === 0 ? (
                       <p className="text-center text-gray-500 py-4">
-                        No saved links available to add
+                        {searchQuery 
+                          ? 'No saved links match your search'
+                          : 'No saved links available to add'
+                        }
                       </p>
                     ) : (
-                      savedLinks.map((link) => (
+                      filteredSavedLinks.map((link) => (
                         <button
                           key={link.id}
                           onClick={() => handleAddResource(link)}
@@ -707,7 +676,7 @@ export function SupercurationDetailPage() {
 
                 <div>
                   <h3 className="font-medium text-gray-900 mb-4">Add a new link</h3>
-                  <ShareForm />
+                  <ShareForm supercurationId={id || undefined} />
                 </div>
               </div>
             </div>
@@ -772,7 +741,7 @@ export function SupercurationDetailPage() {
       )}
 
       {editingLink && id && (
-        <EmojiTagSelector
+        <LinkContentEdit
           suggestedTags={[]}
           onClose={() => setEditingLink(null)}
           onSave={handleEditResource}
