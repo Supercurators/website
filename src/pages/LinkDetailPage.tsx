@@ -98,7 +98,12 @@ export function LinkDetailPage() {
   }, [link?.user?.id]);
 
   const handleBack = () => {
-    navigate(-1); // This will go back to the previous page in history
+    // Check if there's a previous page in the history
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1); // Go back to the previous page
+    } else {
+      navigate('/home'); // Redirect to home if there's no history
+    }
   };
 
   if (isLoading) {
