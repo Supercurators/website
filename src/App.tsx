@@ -58,6 +58,7 @@ export function App() {
               <Route path="/directory" element={<PublicDirectoryPage />} />
               <Route path="/supercurations/public/:slug" element={<PublicSupercurationPage />} />
               <Route path="/" element={<LandingPage />} />
+              <Route path="/links/:slug" element={<LinkDetailPage />} />
             </Route>
 
             <Route element={<AuthLayout />}>
@@ -67,7 +68,6 @@ export function App() {
 
             <Route element={<ProtectedLayout />}>
               <Route path="/home" element={<HomePage />} />
-              <Route path="/links/:slug" element={<LinkDetailPage />} />
               <Route path="/saved" element={<SavedPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/supercurations" element={<SupercurationsPage />} />
