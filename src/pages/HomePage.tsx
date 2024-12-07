@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {Clock, ArrowUpDown } from 'lucide-react';
 import { useLinkStore } from '../store/linkStore';
 import { useAuthStore } from '../store/authStore';
@@ -12,7 +12,16 @@ import { LinkDisplay } from '../components/link/link-display';
 
 export function HomePage() {
   const { topics } = useCategoryStore();
-  const { links, toggleLike, removeLink, fetchLinks } = useLinkStore();
+  const { 
+    links, 
+    toggleLike, 
+    removeLink, 
+    fetchLinks, 
+    fetchMoreLinks,
+    resetAndFetchLinks,
+    isLoading,
+    hasMore 
+  } = useLinkStore();
   const [timeFilter, setTimeFilter] = useState('all');
   const [formatFilter, setFormatFilter] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -21,20 +30,35 @@ export function HomePage() {
   const [sortBy, setSortBy] = useState('newest');
   const { user } = useAuthStore();
 
+  // Add intersection observer
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+    const [target] = entries;
+    if (target.isIntersecting && hasMore && !isLoading) {
+      fetchMoreLinks(sortBy as 'newest' | 'oldest' | 'most_liked');
+    }
+  }, [fetchMoreLinks, hasMore, isLoading, sortBy]);
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        console.log('Fetching links...');
-        await fetchLinks();
-        console.log('Links after fetch:', links);
-      } catch (error) {
-        console.error('Error fetching links:', error);
-        // Add appropriate error handling UI
-      }
+    const element = observerTarget.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(handleObserver, {
+      threshold: 0.5,
+    });
+
+    observer.observe(element);
+
+    return () => {
+      if (element) observer.unobserve(element);
     };
-    
-    fetchData();
-  }, [fetchLinks]);
+  }, [handleObserver]);
+
+  // Initial fetch with sort order
+  useEffect(() => {
+    fetchLinks(10, sortBy as 'newest' | 'oldest' | 'most_liked');
+  }, [fetchLinks, sortBy]);
 
   useEffect(() => {
     if (links && !isCleaningUp) {
@@ -78,7 +102,7 @@ export function HomePage() {
     { emoji: '📚', label: 'Tutorial' },
     { emoji: '🎨', label: 'Design' },
     { emoji: '🤖', label: 'AI' },
-    { emoji: '💻', label: 'Dev' },
+    { emoji: '', label: 'Dev' },
     { emoji: '🔗', label: 'Other' }
   ];
 
@@ -89,38 +113,18 @@ export function HomePage() {
   ];
 
   const getFilteredLinks = () => {
-    console.log('Current filters:', { timeFilter, formatFilter });
-    
     if (!Array.isArray(links)) {
       console.error('Links is not an array:', links);
       return [];
     }
 
-    // Validate each link has required properties
-    const validLinks = links.filter(link => {
-      if (!link.id) {
-        console.warn('Link missing ID:', link);
-        return false;
-      }
-      if (!link.created_at) {
-        console.warn('Link missing created_at:', link);
-        return false;
-      }
-      return true;
-    });
+    let filtered = [...links];
 
-    let filtered = [...validLinks];
-
-    // Filter by format with additional logging
+    // Filter by format
     if (formatFilter) {
       filtered = filtered.filter(link => {
-        if (!Array.isArray(link.emoji_tags)) {
-          console.warn(`Link ${link.id} has invalid emoji_tags:`, link.emoji_tags);
-          return false;
-        }
-        const hasTag = link.emoji_tags.includes(formatFilter);
-        console.log(`Link ${link.id} has format ${formatFilter}:`, hasTag);
-        return hasTag;
+        if (!Array.isArray(link.emoji_tags)) return false;
+        return link.emoji_tags.includes(formatFilter);
       });
     }
 
@@ -151,25 +155,12 @@ export function HomePage() {
       }
     }
 
-    // Sort by created_at in descending order (newest first)
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'oldest':
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        case 'most_liked':
-          return (b.likes || 0) - (a.likes || 0);
-        case 'newest':
-        default:
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
-    });
-
-    console.log('Filtered results:', filtered);
     return filtered;
   };
 
   const filteredLinks = getFilteredLinks();
-  console.log('Filtered Links:', filteredLinks);
+  const showLoadingIndicator = isLoading && (!filteredLinks || filteredLinks.length === 0);
+  const showLoadMoreIndicator = isLoading && filteredLinks.length > 0;
 
   const handleEditComplete = async () => {
     try {
@@ -180,6 +171,11 @@ export function HomePage() {
       console.error('Error refreshing links after edit:', error);
     }
   };
+
+  // When sort order changes, refetch links
+  useEffect(() => {
+    resetAndFetchLinks(10, sortBy as 'newest' | 'oldest' | 'most_liked');
+  }, [sortBy, resetAndFetchLinks]);
 
   return (
     <div className="max-w-2xl mx-auto p-4">
@@ -252,27 +248,43 @@ export function HomePage() {
 
       {/* Links Feed */}
       <div className="space-y-4">
-        {getFilteredLinks().map((link) => {
-          if (!link.id) {
-            console.error('Attempting to render link without ID:', link);
-            return null;
-          }
-          
-          const isEditable = user?.id === link.created_by;
-          
-          return (
-            <LinkDisplay
-              key={link.id}
-              link={link as Link}
-              topics={topics}
-              onToggleLike={toggleLike}
-              onEdit={setEditingLink}
-              onDelete={setShowDeleteConfirm}
-              showUserInfo={true}
-              editable={isEditable}
-            />
-          );
-        })}
+        {showLoadingIndicator && (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+          </div>
+        )}
+
+        {filteredLinks.map((link) => (
+          <LinkDisplay
+            key={link.id}
+            link={link}
+            topics={topics}
+            onToggleLike={toggleLike}
+            onEdit={setEditingLink}
+            onDelete={setShowDeleteConfirm}
+            showUserInfo={true}
+            editable={user?.id === link.created_by}
+          />
+        ))}
+        
+        {/* Infinite scroll observer and loading indicator */}
+        <div ref={observerTarget} className="h-10 flex items-center justify-center">
+          {showLoadMoreIndicator && (
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900" />
+          )}
+        </div>
+        
+        {!hasMore && filteredLinks.length > 0 && (
+          <div className="text-center text-gray-500 py-4">
+            No more links to load
+          </div>
+        )}
+
+        {!isLoading && filteredLinks.length === 0 && (
+          <div className="text-center text-gray-500 py-8">
+            No links found
+          </div>
+        )}
       </div>
 
       {showDeleteConfirm && (

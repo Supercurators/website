@@ -13,6 +13,7 @@
     "@remix-run/router": "1.15.0-pre.0",
     "@tanstack/react-router": "^1.85.0",
     "cheerio": "1.0.0-rc.12",
+    "date-fns": "^4.1.0",
     "firebase": "^10.8.0",
     "lucide-react": "^0.344.0",
     "node-html-parser": "^6.1.12",

@@ -127,6 +127,7 @@ export function ShareForm({ supercurationId, onLinkAdded }: ShareFormProps) {
                 is_original_content: isOriginal,
                 publish_to_feed: true,
                 supercuration_ids: supercurationIds,
+                linkText: postData.linkText || '',
                 ...(currentSupercurationId && supercurationTags ? {
                   supercuration_tags: {
                     [currentSupercurationId]: supercurationTags

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Grid, List, Lock, ExternalLink, X, Filter, Clock, ArrowUpDown } from 'lucide-react';
+import { Grid, List, Lock, X, Filter, Clock, ArrowUpDown } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { DirectoryFilters } from '../components/directory/DirectoryFilters';
 import { NewsletterSignup } from '../components/NewsletterSignup';
 import type { Supercuration, Link as LinkType } from '../types';
+import { LinkDisplay } from '../components/link/link-display';
+import { useCategoryStore } from '../store/categoryStore';
 
 function formatDate(date: Timestamp | string) {
   const dateObj = date instanceof Timestamp ? date.toDate() : new Date(date);
@@ -18,6 +20,7 @@ function formatDate(date: Timestamp | string) {
 }
 
 export function PublicSupercurationPage() {
+  const { topics } = useCategoryStore();
   const { slug } = useParams<{ slug: string }>();
   const [supercuration, setSupercuration] = useState<Supercuration | null>(null);
   const [links, setLinks] = useState<LinkType[]>([]);
@@ -450,109 +453,56 @@ export function PublicSupercurationPage() {
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredLinks.map((link) => (
-                  <a
-                    key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                  >
-                    {link.thumbnail_url && (
-                      <div className="aspect-video">
-                        <img
-                          src={link.thumbnail_url}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
+                  <div key={link.id} className="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                    <LinkDisplay
+                      link={link}
+                      topics={topics}
+                      onToggleLike={() => {/* Implement like functionality */}}
+                      onEdit={() => {}} // No-op since this is public view
+                      onDelete={() => {}} // No-op since this is public view
+                      showUserInfo={true}
+                      editable={false}
+                      onSupercurationDetail={viewMode === 'grid'}
+                    />
+                    {link.supercuration_tags && supercuration.id && link.supercuration_tags[supercuration.id]?.length > 0 && (
+                      <div className="px-4 pb-4 flex flex-wrap gap-2">
+                        {(link.supercuration_tags[supercuration.id] || []).map((tag: string) => {
+                          const category = supercuration.tagCategories?.find(cat => 
+                            cat.tags.includes(tag)
+                          );
+                          if (!category) return null;
+                          return (
+                            <span
+                              key={tag}
+                              className="px-2 py-0.5 text-xs rounded-full"
+                              style={{
+                                backgroundColor: `${category.color}15`,
+                                color: category.color
+                              }}
+                            >
+                              {tag}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
-                    <div className="p-4">
-                      <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
-                        {link.title}
-                        <ExternalLink className="inline-block w-3.5 h-3.5 ml-1 opacity-50" />
-                      </h3>
-                      <p className="text-sm text-gray-500 line-clamp-2 mb-4">
-                        {link.description}
-                      </p>
-                      {link.supercuration_tags && supercuration.id && link.supercuration_tags[supercuration.id]?.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-3">
-                          {(link.supercuration_tags[supercuration.id] || []).map((tag: string) => {
-                            const category = supercuration.tagCategories?.find(cat => 
-                              cat.tags.includes(tag)
-                            );
-                            if (!category) return null;
-                            return (
-                              <span
-                                key={tag}
-                                className="px-2 py-0.5 text-xs rounded-full"
-                                style={{
-                                  backgroundColor: `${category.color}15`,
-                                  color: category.color
-                                }}
-                              >
-                                {tag}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </a>
+                  </div>
                 ))}
               </div>
             ) : (
               <div className="space-y-4">
                 {filteredLinks.map((link) => (
-                  <a
+                  <LinkDisplay
                     key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                  >
-                    <div className="p-4">
-                      <div className="flex gap-4">
-                        {link.thumbnail_url && (
-                          <img
-                            src={link.thumbnail_url}
-                            alt=""
-                            className="w-24 h-24 rounded object-cover flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
-                            {link.title}
-                            <ExternalLink className="inline-block w-3.5 h-3.5 ml-1 opacity-50" />
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            {link.description}
-                          </p>
-                          {link.supercuration_tags && supercuration.id && link.supercuration_tags[supercuration.id]?.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-3">
-                              {(link.supercuration_tags[supercuration.id] || []).map((tag: string) => {
-                                const category = supercuration.tagCategories?.find(cat => 
-                                  cat.tags.includes(tag)
-                                );
-                                if (!category) return null;
-                                return (
-                                  <span
-                                    key={tag}
-                                    className="px-2 py-0.5 text-xs rounded-full"
-                                    style={{
-                                      backgroundColor: `${category.color}15`,
-                                      color: category.color
-                                    }}
-                                  >
-                                    {tag}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </a>
+                    link={link}
+                    topics={topics}
+                    onToggleLike={() => {/* Implement like functionality */}}
+                    onEdit={() => {}} // No-op since this is public view
+                    onDelete={() => {}} // No-op since this is public view
+                    showUserInfo={true}
+                    editable={false}
+                    onSupercurationDetail={viewMode === 'list'}
+                  />
                 ))}
               </div>
             )}

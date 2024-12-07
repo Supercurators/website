@@ -11,6 +11,7 @@ interface LinkDisplayProps {
   onDelete: (id: string) => void;
   showUserInfo?: boolean;
   editable?: boolean;
+  onSupercurationDetail?: boolean;
 }
 
 export function LinkDisplay({ 
@@ -20,31 +21,74 @@ export function LinkDisplay({
   onEdit, 
   onDelete, 
   showUserInfo = false,
-  editable = false
+  editable = false,
+  onSupercurationDetail = false
 }: LinkDisplayProps) {
+  const imageClassName = onSupercurationDetail 
+    ? "w-full h-48 object-cover"
+    : "w-24 h-24 rounded object-cover";
+
+  const containerClassName = onSupercurationDetail
+    ? "bg-white"
+    : "bg-white rounded-lg shadow-sm overflow-hidden p-4";
+
+  const imageContainerClassName = onSupercurationDetail
+    ? "relative block"
+    : "shrink-0";
+
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden p-4">
-      <div className="flex gap-4">
-        {link.thumbnail_url && (
-          <img
-            src={link.thumbnail_url}
-            alt=""
-            className="w-24 h-24 rounded object-cover"
-          />
+    <div className={containerClassName}>
+      <div className={onSupercurationDetail ? "relative" : "flex gap-4"}>
+        {editable && onSupercurationDetail && (
+          <div className="absolute top-2 right-2 z-10 flex gap-2">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                onEdit(link);
+              }}
+              className="p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-blue-600 hover:bg-gray-100"
+              title="Edit resource"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                onDelete(link.id);
+              }}
+              className="p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-600 hover:bg-gray-100"
+              title="Remove from supercuration"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         )}
-        <div className="flex-1 min-w-0">
+        
+        {link.thumbnail_url && (
+          <RouterLink 
+            to={`/links/${link.id}`} 
+            className={imageContainerClassName}
+          >
+            <img
+              src={link.thumbnail_url}
+              alt=""
+              className={imageClassName}
+            />
+          </RouterLink>
+        )}
+        
+        <div className={onSupercurationDetail ? "p-4" : "flex-1 min-w-0"}>
           <div className="flex items-start justify-between">
             <div className="min-w-0 flex-1">
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-gray-900 hover:text-blue-600 block mb-1 break-all line-clamp-2"
+              <RouterLink
+                to={`/links/${link.id}`}
+                className={`font-medium text-gray-900 hover:text-blue-600 block ${
+                  onSupercurationDetail ? 'mb-2' : 'mb-1'
+                } break-all line-clamp-2`}
               >
                 {link.title.length > 100 ? `${link.title.slice(0, 100)}...` : link.title}
-                <ExternalLink className="inline-block w-3.5 h-3.5 ml-1 opacity-50" />
-              </a>
-              <p className="text-sm text-gray-500 mb-2">
+              </RouterLink>
+              <p className={`text-sm text-gray-500 ${onSupercurationDetail ? 'mb-4' : 'mb-2'}`}>
                 {(() => {
                   const [isExpanded, setIsExpanded] = useState(false);
                   return link.description.length > 100 ? (
@@ -75,7 +119,10 @@ export function LinkDisplay({
                   {new Date(link.created_at).toLocaleDateString()}
                 </span>
                 <button
-                  onClick={() => onToggleLike(link.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onToggleLike(link.id);
+                  }}
                   className={`flex items-center gap-1 ${
                     link.liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
                   }`}
@@ -91,17 +138,33 @@ export function LinkDisplay({
                 )}
               </div>
             </div>
-            {editable && (
+            {editable && !onSupercurationDetail && (
               <div className="flex items-center gap-2">
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                  title={link.linkText || "Visit link"}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
                 <button
-                  onClick={() => onEdit(link)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onEdit(link);
+                  }}
                   className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
                   title="Edit link"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => onDelete(link.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onDelete(link.id);
+                  }}
                   className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
                   title="Delete"
                 >

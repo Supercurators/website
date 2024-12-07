@@ -15,7 +15,10 @@ import {
   getDoc,
   increment,
   setDoc,
-  writeBatch
+  writeBatch,
+  limit as firestoreLimit,
+  startAfter,
+  QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { sanitizeForFirestore, validateLinkData } from '../lib/firestore';
@@ -23,10 +26,14 @@ import type { Link } from '../types';
 
 interface LinkState {
   links: Link[];
+  lastDoc: QueryDocumentSnapshot | null;
+  hasMore: boolean;
+  isLoading: boolean;
   loading: boolean;
   error: string | null;
   isOffline: boolean;
-  fetchLinks: () => Promise<void>;
+  fetchLinks: (pageSize?: number, sortOrder?: 'newest' | 'oldest' | 'most_liked') => Promise<void>;
+  fetchMoreLinks: (sortOrder?: 'newest' | 'oldest' | 'most_liked') => Promise<void>;
   addLink: (data: AddLinkData) => Promise<Link>;
   updateLink: (id: string, data: Partial<Link>) => Promise<void>;
   removeLink: (id: string) => Promise<void>;
@@ -36,6 +43,7 @@ interface LinkState {
   updateLinkFormats: (id: string, formats: string[]) => Promise<void>;
   removeTopicFromLinks: (topicId: string) => Promise<void>;
   refreshLinks: () => Promise<void>;
+  resetAndFetchLinks: (pageSize: number, sortOrder: 'newest' | 'oldest' | 'most_liked') => Promise<void>;
 }
 
 interface AddLinkData {
@@ -48,27 +56,54 @@ interface AddLinkData {
   is_original_content: boolean;
   supercuration_ids?: string[];
   publish_to_feed?: boolean;
+  linkText: string;
 }
 
 export const useLinkStore = create<LinkState>((set, get) => ({
   links: [],
+  lastDoc: null,
+  hasMore: true,
+  isLoading: false,
   loading: false,
   error: null,
   isOffline: !navigator.onLine,
 
-  fetchLinks: async () => {
+  fetchLinks: async (pageSize = 10, sortOrder = 'newest') => {
+    set({ isLoading: true });
     try {
-      set({ loading: true, error: null });
-
-      const linksQuery = query(
-        collection(db, 'links'),
-        orderBy('created_at', 'desc')
-      );
-
-      const querySnapshot = await getDocs(linksQuery);
+      const linksRef = collection(db, 'links');
+      
+      // Build query based on sort order
+      let q;
+      switch (sortOrder) {
+        case 'oldest':
+          q = query(
+            linksRef,
+            orderBy('created_at', 'asc'),
+            firestoreLimit(pageSize)
+          );
+          break;
+        case 'most_liked':
+          q = query(
+            linksRef,
+            orderBy('likes', 'desc'),
+            orderBy('created_at', 'desc'),
+            firestoreLimit(pageSize)
+          );
+          break;
+        case 'newest':
+        default:
+          q = query(
+            linksRef,
+            orderBy('created_at', 'desc'),
+            firestoreLimit(pageSize)
+          );
+      }
+      
+      const snapshot = await getDocs(q);
       const currentUser = auth.currentUser;
-      const links: Link[] = [];
-
+      
+      // Get user likes for the current batch
       let userLikes: string[] = [];
       if (currentUser) {
         const likesQuery = query(
@@ -79,9 +114,9 @@ export const useLinkStore = create<LinkState>((set, get) => ({
         userLikes = likesSnapshot.docs.map(doc => doc.data().linkId);
       }
 
-      querySnapshot.forEach((doc) => {
+      const links = snapshot.docs.map(doc => {
         const data = doc.data();
-        links.push({
+        return {
           id: doc.id,
           ...data,
           created_at: data.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
@@ -95,15 +130,101 @@ export const useLinkStore = create<LinkState>((set, get) => ({
             name: 'Unknown User',
             avatar_url: `https://api.dicebear.com/7.x/avatars/svg?seed=${data.created_by}`
           }
-        } as Link);
+        } as Link;
       });
-
-      set({ links, error: null });
-    } catch (error: any) {
+      
+      set({
+        links,
+        lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
+        hasMore: snapshot.docs.length === pageSize,
+        isLoading: false
+      });
+    } catch (error) {
       console.error('Error fetching links:', error);
-      set({ error: 'Failed to fetch links' });
-    } finally {
-      set({ loading: false });
+      set({ isLoading: false, error: 'Failed to fetch links' });
+    }
+  },
+
+  fetchMoreLinks: async (sortOrder = 'newest') => {
+    const { lastDoc, links, isLoading, hasMore } = get();
+    if (isLoading || !hasMore || !lastDoc) return;
+
+    set({ isLoading: true });
+    try {
+      const linksRef = collection(db, 'links');
+      
+      // Build query based on sort order
+      let q;
+      switch (sortOrder) {
+        case 'oldest':
+          q = query(
+            linksRef,
+            orderBy('created_at', 'asc'),
+            startAfter(lastDoc),
+            firestoreLimit(10)
+          );
+          break;
+        case 'most_liked':
+          q = query(
+            linksRef,
+            orderBy('likes', 'desc'),
+            orderBy('created_at', 'desc'),
+            startAfter(lastDoc),
+            firestoreLimit(10)
+          );
+          break;
+        case 'newest':
+        default:
+          q = query(
+            linksRef,
+            orderBy('created_at', 'desc'),
+            startAfter(lastDoc),
+            firestoreLimit(10)
+          );
+      }
+      
+      const snapshot = await getDocs(q);
+      const currentUser = auth.currentUser;
+      
+      // Get user likes for the new batch
+      let userLikes: string[] = [];
+      if (currentUser) {
+        const likesQuery = query(
+          collection(db, 'likes'),
+          where('userId', '==', currentUser.uid)
+        );
+        const likesSnapshot = await getDocs(likesQuery);
+        userLikes = likesSnapshot.docs.map(doc => doc.data().linkId);
+      }
+
+      const newLinks = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          created_at: data.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
+          liked: userLikes.includes(doc.id),
+          likes: data.likes || 0,
+          emoji_tags: data.emoji_tags || [],
+          topic_ids: data.topic_ids || [],
+          supercuration_ids: data.supercuration_ids || [],
+          user: data.user || {
+            id: data.created_by,
+            name: 'Unknown User',
+            avatar_url: `https://api.dicebear.com/7.x/avatars/svg?seed=${data.created_by}`
+          }
+        } as Link;
+      });
+      
+      set({
+        links: [...links, ...newLinks],
+        lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
+        hasMore: snapshot.docs.length === 10,
+        isLoading: false
+      });
+    } catch (error) {
+      console.error('Error fetching more links:', error);
+      set({ isLoading: false, error: 'Failed to fetch more links' });
     }
   },
 
@@ -138,7 +259,8 @@ export const useLinkStore = create<LinkState>((set, get) => ({
         liked: false,
         likes: 0,
         reposts_count: 0,
-        user: linkData.user
+        user: linkData.user,
+        linkText: data.linkText
       };
 
       set(state => ({
@@ -164,22 +286,13 @@ export const useLinkStore = create<LinkState>((set, get) => ({
     }
   },
 
-  updateLink: async (linkId: string, updates: Partial<Link>) => {
+  updateLink: async (id, data) => {
     try {
-      const linkRef = doc(db, 'links', linkId);
+      const linkRef = doc(db, 'links', id);
       await updateDoc(linkRef, {
-        ...updates,
+        ...data,
         updated_at: serverTimestamp()
       });
-      
-      // Update local state
-      set(state => ({
-        links: state.links.map(link =>
-          link.id === linkId ? { ...link, ...updates } : link
-        )
-      }));
-      
-      return;
     } catch (error) {
       console.error('Error updating link:', error);
       throw error;
@@ -342,5 +455,10 @@ export const useLinkStore = create<LinkState>((set, get) => ({
     } catch (error) {
       console.error('Error refreshing links:', error);
     }
-  }
+  },
+
+  resetAndFetchLinks: async (pageSize: number, sortOrder: 'newest' | 'oldest' | 'most_liked') => {
+    set({ links: [], lastDoc: null, hasMore: true });
+    await get().fetchLinks(pageSize, sortOrder);
+  },
 }));

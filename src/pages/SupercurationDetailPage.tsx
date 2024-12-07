@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Grid, List, Globe, Lock, Tag, Plus, Trash2, X, Pencil } from 'lucide-react';
-import { doc, getDoc, collection, query, where, getDocs, deleteDoc, runTransaction, deleteField } from 'firebase/firestore';
+import { Grid, List, Globe, Lock, Tag, Plus, Trash2, X } from 'lucide-react';
+import { doc, getDoc, collection, query, where, getDocs, deleteDoc, runTransaction, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/authStore';
 import { useSupercurationStore } from '../store/supercurationStore';
@@ -102,12 +102,28 @@ export function SupercurationDetailPage() {
     if (!id || !user?.id) return;
     
     try {
-      const newLink = {
-        ...linkData,
-        supercuration_ids: [id] as string[],
-        created_at: new Date().toISOString(),
+      // Create new link object with proper typing
+      const newLink: Omit<LinkType, 'id' | 'liked' | 'created_at'> & { created_at: any } = {
+        url: linkData.url,
+        title: linkData.title,
+        description: linkData.description,
+        thumbnail_url: linkData.thumbnail_url,
+        emoji_tags: linkData.emoji_tags,
+        topic_ids: linkData.topic_ids,
+        supercuration_ids: [id],
+        supercuration_tags: linkData.supercuration_tags || {},
+        is_original_content: linkData.is_original_content,
         created_by: user.id,
-      } as LinkType;
+        created_at: serverTimestamp(),
+        user: {
+          id: user.id,
+          name: user.name,
+          avatar_url: user.avatar_url
+        },
+        likes: 0,
+        reposts_count: 0,
+        linkText: linkData.linkText
+      };
 
       await runTransaction(db, async (transaction) => {
         // First, perform all reads
@@ -135,23 +151,31 @@ export function SupercurationDetailPage() {
         const allLinksQuery = query(linksRef, where('url', '==', linkData.url));
         const allLinksSnapshot = await getDocs(allLinksQuery);
         
-        let linkRef;
+        let finalLink: LinkType;
+        
         if (!allLinksSnapshot.empty) {
           // Update existing link
           const existingLink = allLinksSnapshot.docs[0];
-          linkRef = doc(db, 'links', existingLink.id);
+          const linkRef = doc(db, 'links', existingLink.id);
           const existingData = existingLink.data();
           
           transaction.update(linkRef, {
             supercuration_ids: [...new Set([...(existingData.supercuration_ids || []), id])]
           });
           
-          newLink.id = existingLink.id;
+          finalLink = {
+            ...existingLink.data(),
+            id: existingLink.id
+          } as LinkType;
         } else {
           // Create new link
-          linkRef = doc(collection(db, 'links'));
+          const linkRef = doc(collection(db, 'links'));
           transaction.set(linkRef, newLink);
-          newLink.id = linkRef.id;
+          finalLink = {
+            ...newLink,
+            id: linkRef.id,
+            liked: false
+          } as LinkType;
         }
 
         // Update supercuration links count
@@ -160,13 +184,12 @@ export function SupercurationDetailPage() {
         });
 
         // Update local state
-        setLinks(prev => [...prev, newLink]);
+        setLinks(prev => [...prev, finalLink]);
       });
 
       setShowAddResource(false);
     } catch (err) {
       console.error('Error adding resource:', err);
-      // Show error to user
       alert(err instanceof Error ? err.message : 'Failed to add resource');
     }
   };
@@ -467,7 +490,7 @@ export function SupercurationDetailPage() {
         </div>
       ))}
 
-      {viewMode === 'grid' ? (
+      {viewMode === 'grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isOwner && (
             <button
@@ -481,74 +504,45 @@ export function SupercurationDetailPage() {
             </button>
           )}
           {filteredLinks.map((link) => (
-            <div
-              key={link.id}
-              className="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-            >
-              <div className="relative">
-                {isOwner && (
-                  <div className="absolute top-2 right-2 z-10 flex gap-2">
-                    <button
-                      onClick={() => setEditingLink(link)}
-                      className="p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-blue-600 hover:bg-gray-100"
-                      title="Edit resource"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeletingResourceId(link.id)}
-                      className="p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-red-600 hover:bg-gray-100"
-                      title="Remove from supercuration"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block"
-                >
-                  {link.thumbnail_url && (
-                    <img
-                      src={link.thumbnail_url}
-                      alt=""
-                      className="w-full h-48 object-cover"
-                    />
-                  )}
-                  <div className="p-4">
-                    <h3 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
-                      {link.title}
-                    </h3>
-                    <p className="text-sm text-gray-500 line-clamp-2 mb-4">
-                      {link.description}
-                    </p>
-                    {(link.supercuration_tags?.[id || ''] ?? []).map((tag: string) => {
-                      const category = supercuration.tagCategories?.find(cat =>
-                        cat.tags.includes(tag)
-                      );
-                      if (!category) return null;
-                      return (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 text-xs rounded-full"
-                          style={{
-                            backgroundColor: `${category.color}15`,
-                            color: category.color
-                          }}
-                        >
-                          {tag}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </a>
-              </div>
+            <div key={link.id} className="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+              <LinkDisplay
+                link={link}
+                topics={topics}
+                onToggleLike={() => {/* Implement like functionality */}}
+                onEdit={() => setEditingLink(link)}
+                onDelete={() => setDeletingResourceId(link.id)}
+                showUserInfo={true}
+                editable={isOwner}
+                onSupercurationDetail={viewMode === 'grid'}
+              />
+              {(link.supercuration_tags?.[id || ''] ?? []).length > 0 && (
+                <div className="px-4 pb-4 flex flex-wrap gap-2">
+                  {(link.supercuration_tags?.[id || ''] ?? []).map((tag: string) => {
+                    const category = supercuration.tagCategories?.find(cat =>
+                      cat.tags.includes(tag)
+                    );
+                    if (!category) return null;
+                    return (
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 text-xs rounded-full"
+                        style={{
+                          backgroundColor: `${category.color}15`,
+                          color: category.color
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))}
         </div>
-      ) : (
+      )}
+
+      {viewMode === 'list' && (
         <div className="space-y-4">
           {isOwner && (
             <button
@@ -566,9 +560,12 @@ export function SupercurationDetailPage() {
               key={link.id}
               link={link}
               topics={topics}
-              onToggleLike={() => {/* Implement like functionality if needed */}}
+              onToggleLike={() => {/* Implement like functionality */}}
               onEdit={() => setEditingLink(link)}
               onDelete={() => setDeletingResourceId(link.id)}
+              showUserInfo={true}
+              editable={isOwner}
+              onSupercurationDetail={viewMode === 'list'}
             />
           ))}
         </div>

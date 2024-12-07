@@ -13,12 +13,14 @@ interface LinkContentEditProps {
     title: string;
     description: string;
     thumbnail_url?: string;
+    linkText?: string;
   }, supercurationTags?: string[], supercurationId?: string, selectedSupercurations?: string[]) => void;
   preview: {
     title: string;
     description: string;
     thumbnail_url?: string;
     url?: string;
+    linkText?: string;
   };
   isEditing?: boolean;
   initialEmojis?: string[];
@@ -69,7 +71,8 @@ export function LinkContentEdit({
     title: preview.title || '',
     description: preview.description || '',
     thumbnail_url: preview.thumbnail_url || '',
-    imageType: 'url' as 'url' | 'upload'
+    imageType: 'url' as 'url' | 'upload',
+    linkText: preview.linkText || 'Visit Link'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSupercurationTags, setSelectedSupercurationTags] = useState<string[]>(
@@ -114,7 +117,8 @@ export function LinkContentEdit({
           ...(postData.url ? { url: postData.url } : {}),
           title: postData.title,
           description: postData.description,
-          thumbnail_url: postData.thumbnail_url
+          thumbnail_url: postData.thumbnail_url,
+          linkText: postData.linkText
         },
         supercurationId ? selectedSupercurationTags : undefined,
         supercurationId,
@@ -298,6 +302,20 @@ export function LinkContentEdit({
                     placeholder="Enter URL (optional)"
                   />
                 </div>
+              </div>
+
+              {/* Link Text Input - Now always visible */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Link Button Text
+                </label>
+                <input
+                  type="text"
+                  value={postData.linkText}
+                  onChange={(e) => setPostData({ ...postData, linkText: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Visit Link"
+                />
               </div>
 
               {/* Thumbnail Section */}

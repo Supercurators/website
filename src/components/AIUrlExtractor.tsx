@@ -101,7 +101,8 @@ export function AIUrlExtractor() {
           topic_ids: [],
           is_original_content: false,
           supercuration_ids: selectedSupercurationId ? [selectedSupercurationId] : undefined,
-          publish_to_feed: !skipMainFeed
+          publish_to_feed: !skipMainFeed,
+          linkText: 'Visit Link'
         });
       }
 
@@ -266,7 +267,8 @@ export function AIUrlExtractor() {
                 topic_ids: selectedTopics,
                 is_original_content: isOriginal,
                 supercuration_ids: selectedSupercurationId ? [selectedSupercurationId] : undefined,
-                publish_to_feed: !skipMainFeed
+                publish_to_feed: !skipMainFeed,
+                linkText: postData.linkText || 'Visit Link'
               });
               setShowEmojiSelector(false);
               setSelectedLink(null);

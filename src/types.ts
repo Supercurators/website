@@ -81,6 +81,7 @@ export interface Link {
       avatar_url: string;
     };
   };
+  linkText?: string;
 }
 
 export interface ExtractedLink {
