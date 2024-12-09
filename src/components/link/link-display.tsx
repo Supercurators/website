@@ -3,6 +3,35 @@ import { Link, TopicCategory } from '../../types';
 import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 
+function formatDateTime(timestamp: any): string {
+  try {
+    if (!timestamp) return '';
+    
+    // Handle Firebase Timestamp format
+    if (timestamp.seconds) {
+      const date = new Date(timestamp.seconds * 1000); // Convert seconds to milliseconds
+      
+      return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }).format(date);
+    }
+
+    // Fallback for other date formats
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
+
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }).format(date);
+  } catch {
+    return '';
+  }
+}
+
 interface LinkDisplayProps {
   link: Link;
   topics: TopicCategory[];
@@ -116,7 +145,7 @@ export function LinkDisplay({
                   </RouterLink>
                 )}
                 <span className="text-gray-400">
-                  {new Date(link.created_at).toLocaleDateString()}
+                  {formatDateTime(link.created_at)}
                 </span>
                 <button
                   onClick={(e) => {
