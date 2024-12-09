@@ -217,18 +217,32 @@ export function SavedPage() {
       title: string;
       description: string;
       thumbnail_url?: string;
-    }
+    },
+    supercurationTags?: string[],
+    currentSupercurationId?: string,
+    selectedSupercurations?: string[]
   ) => {
     if (!editingLink?.id) return;
 
     try {
-      // Prepare the update data
+      // Determine which supercuration IDs to use
+      const supercurationIds = currentSupercurationId 
+        ? [currentSupercurationId]
+        : selectedSupercurations || [];
+
+      // Prepare the update data matching ShareForm structure
       const updateData = {
         ...postData,
         emoji_tags: selectedEmojis,
         topic_ids: selectedTopics,
         is_original_content: isOriginal,
-        updated_at: new Date().toISOString(),
+        publish_to_feed: true,
+        supercuration_ids: supercurationIds,
+        ...(currentSupercurationId && supercurationTags ? {
+          supercuration_tags: {
+            [currentSupercurationId]: supercurationTags
+          }
+        } : {})
       };
 
       // Update in Firestore
@@ -426,8 +440,8 @@ export function SavedPage() {
         {editingLink && (
           <LinkContentEdit
             onClose={() => setEditingLink(null)}
-            onSave={(selectedEmojis, selectedTopics, isOriginal, postData) => 
-              handleEditComplete(selectedEmojis, selectedTopics, isOriginal, postData)
+            onSave={(selectedEmojis, selectedTopics, isOriginal, postData, supercurationTags, currentSupercurationId, selectedSupercurations) => 
+              handleEditComplete(selectedEmojis, selectedTopics, isOriginal, postData, supercurationTags, currentSupercurationId, selectedSupercurations)
             }
             preview={{
               url: editingLink.url,

@@ -4,7 +4,7 @@ import { useLinkStore } from '../store/linkStore';
 import { useAuthStore } from '../store/authStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
-import { EditLinkModal } from '../components/EditLinkModal';
+import { LinkContentEdit } from '../components/link/link-content-edit';
 import type { Link } from '../types';
 import { cleanupInvalidLinks } from '../lib/firestore';
 import { ShareForm } from '../components/link/ShareForm';
@@ -20,7 +20,8 @@ export function HomePage() {
     fetchMoreLinks,
     resetAndFetchLinks,
     isLoading,
-    hasMore 
+    hasMore,
+    updateLink
   } = useLinkStore();
   const [timeFilter, setTimeFilter] = useState('all');
   const [formatFilter, setFormatFilter] = useState<string | null>(null);
@@ -162,13 +163,49 @@ export function HomePage() {
   const showLoadingIndicator = isLoading && (!filteredLinks || filteredLinks.length === 0);
   const showLoadMoreIndicator = isLoading && filteredLinks.length > 0;
 
-  const handleEditComplete = async () => {
+  const handleEditComplete = async (
+    selectedEmojis: string[],
+    selectedTopics: string[],
+    isOriginal: boolean,
+    postData: {
+      url?: string;
+      title: string;
+      description: string;
+      thumbnail_url?: string;
+    },
+    supercurationTags?: string[],
+    currentSupercurationId?: string,
+    selectedSupercurations?: string[]
+  ) => {
     try {
-      // Refresh the links after an edit
-      await fetchLinks();
-      setEditingLink(null);
+      // Determine which supercuration IDs to use
+      const supercurationIds = currentSupercurationId 
+        ? [currentSupercurationId]
+        : selectedSupercurations || [];
+
+      // Prepare the update data matching ShareForm structure
+      const updateData = {
+        ...postData,
+        emoji_tags: selectedEmojis,
+        topic_ids: selectedTopics,
+        is_original_content: isOriginal,
+        publish_to_feed: true,
+        supercuration_ids: supercurationIds,
+        ...(currentSupercurationId && supercurationTags ? {
+          supercuration_tags: {
+            [currentSupercurationId]: supercurationTags
+          }
+        } : {})
+      };
+
+      // Update in Firestore and refresh links
+      if (editingLink?.id) {
+        await updateLink(editingLink.id, updateData);
+        await fetchLinks();
+        setEditingLink(null);
+      }
     } catch (error) {
-      console.error('Error refreshing links after edit:', error);
+      console.error('Error updating link:', error);
     }
   };
 
@@ -296,11 +333,22 @@ export function HomePage() {
       )}
 
       {editingLink && (
-        <EditLinkModal
-          isOpen={true}
+        <LinkContentEdit
           onClose={() => setEditingLink(null)}
-          linkId={editingLink.id}
-          onEditComplete={handleEditComplete}
+          onSave={(selectedEmojis, selectedTopics, isOriginal, postData, supercurationTags, currentSupercurationId, selectedSupercurations) => 
+            handleEditComplete(selectedEmojis, selectedTopics, isOriginal, postData, supercurationTags, currentSupercurationId, selectedSupercurations)
+          }
+          preview={{
+            url: editingLink.url,
+            title: editingLink.title,
+            description: editingLink.description,
+            thumbnail_url: editingLink.thumbnail_url,
+          }}
+          suggestedTags={[]}
+          isEditing={true}
+          initialEmojis={editingLink.emoji_tags}
+          initialTopics={editingLink.topic_ids}
+          initialIsOriginal={editingLink.is_original_content}
         />
       )}
     </div>
