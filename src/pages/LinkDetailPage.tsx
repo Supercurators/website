@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useLinkStore } from '../store/linkStore';
 import { useAuthStore } from '../store/authStore';
@@ -9,6 +9,12 @@ import { ArrowLeft, Calendar, Share2, Pencil } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { LinkContentEdit } from '../components/link/link-content-edit';
 import { ShareModal } from '../components/link/ShareModal';
+
+interface Supercuration {
+  id: string;
+  created_by: string;
+  collaborators?: { id: string; name: string; avatar_url?: string; }[];
+}
 
 export function LinkDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -21,9 +27,20 @@ export function LinkDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [userData, setUserData] = useState<{ name: string; avatar_url: string; bio?: string } | null>(null);
+  const [supercurations, setSupercurations] = useState<Supercuration[]>([]);
   
-  // Check if the current user is the author of the link
-  const isAuthor = user?.id === link?.user?.id;
+  const canEdit = () => {
+    if (!user?.id || !link) return false;
+    
+    // Original author can always edit
+    if (user.id === link.user?.id) return true;
+    
+    // Check if user is a collaborator in any of the supercurations this link belongs to
+    return supercurations.some(supercuration => 
+      supercuration.created_by === user.id || 
+      supercuration.collaborators?.some(c => c.id === user.id)
+    );
+  };
 
   const fetchLinkDetail = async () => {
     if (!slug) return;
@@ -73,7 +90,7 @@ export function LinkDetailPage() {
 
   useEffect(() => {
     fetchLinkDetail();
-  }, [slug]);
+  }, [slug, user]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -96,6 +113,30 @@ export function LinkDetailPage() {
 
     fetchUserData();
   }, [link?.user?.id]);
+
+  useEffect(() => {
+    const fetchSupercurations = async () => {
+      if (!link?.supercuration_ids?.length) return;
+      
+      try {
+        const supercurationsRef = collection(db, 'supercurations');
+        const supercurationsSnapshot = await getDocs(
+          query(supercurationsRef, where('__name__', 'in', link.supercuration_ids))
+        );
+        
+        const supercurationsData = supercurationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Supercuration[];
+        
+        setSupercurations(supercurationsData);
+      } catch (err) {
+        console.error('Error fetching supercurations:', err);
+      }
+    };
+
+    fetchSupercurations();
+  }, [link]);
 
   const handleBack = () => {
     // Check if there's a previous page in the history
@@ -158,7 +199,7 @@ export function LinkDetailPage() {
                 >
                   {userData?.name || link.user?.name || 'Anonymous User'}
                 </RouterLink>
-                {isAuthor && <span className="ml-2 text-sm text-gray-500">(You)</span>}
+                {canEdit() && <span className="ml-2 text-sm text-gray-500">(You)</span>}
               </h2>
               <div className="flex items-center text-sm text-gray-500">
                 <Calendar className="w-4 h-4 mr-1" />
@@ -205,7 +246,7 @@ export function LinkDetailPage() {
             Share
           </button>
 
-          {isAuthor && (
+          {canEdit() && (
             <button
               onClick={() => setIsEditing(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-full text-gray-600 hover:bg-gray-100"

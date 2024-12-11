@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X, Home, BookMarked, Library, Users } from 'lucide-react';
+import { LogOut, Menu, X, BookMarked, Library, Users } from 'lucide-react';
 import { useAuthStore } from './store/authStore';
 import { ProfileSettings } from './components/ProfileSettings';
 import { useState } from 'react';
@@ -27,7 +27,7 @@ export function Layout({ children }: LayoutProps) {
 
   const NavLinks = () => (
     <>
-      <Link
+      {/* <Link
         to="/home"
         className={`flex items-center px-2 py-3 text-lg rounded-full transition-colors ${
           isActive('/home')
@@ -38,12 +38,12 @@ export function Layout({ children }: LayoutProps) {
       >
         <Home className="w-6 h-6 mr-4" />
         Home
-      </Link>
+      </Link> */}
 
       <Link
         to="/saved"
         className={`flex items-center px-2 py-3 text-lg rounded-full transition-colors ${
-          isActive('/saved')
+          (isActive('/saved')|| isActive('/home'))
             ? 'font-bold'
             : 'text-gray-700 hover:bg-gray-50'
         }`}

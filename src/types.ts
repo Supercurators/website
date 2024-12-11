@@ -41,7 +41,13 @@ export interface Supercuration {
   slug?: string;
   tagCategories: TagCategory[];
   subscribers?: string[];
+  collaborators?: {
+    id: string;
+    name: string;
+    avatar_url?: string;
+  }[];
 }
+
 export interface TopicCategory {
   id: string;
   name: string;

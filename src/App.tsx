@@ -8,7 +8,6 @@ import { ProtectedLayout } from './components/layout/ProtectedLayout';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { HomePage } from './pages/HomePage';
 import { SavedPage } from './pages/SavedPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -67,7 +66,7 @@ export function App() {
             </Route>
 
             <Route element={<ProtectedLayout />}>
-              <Route path="/home" element={<HomePage />} />
+              <Route path="/home" element={<SavedPage />} />
               <Route path="/saved" element={<SavedPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/supercurations" element={<SupercurationsPage />} />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Grid, List, Globe, Lock, Tag, Plus, Trash2, X } from 'lucide-react';
-import { doc, getDoc, collection, query, where, getDocs, deleteDoc, runTransaction, deleteField, serverTimestamp } from 'firebase/firestore';
+import { Grid, List, Globe, Lock, Tag, Plus, Trash2, X, Users } from 'lucide-react';
+import { doc, getDoc, collection, query, where, getDocs, deleteDoc, runTransaction, deleteField, serverTimestamp, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuthStore } from '../store/authStore';
 import { useSupercurationStore } from '../store/supercurationStore';
@@ -14,6 +14,14 @@ import { useLinkStore } from '../store/linkStore';
 import { ShareForm } from '../components/link/ShareForm';
 import { LinkDisplay } from '../components/link/link-display';
 import { useCategoryStore } from '../store/categoryStore';
+import { UserSearch } from '../components/user/UserSearch';
+import { UserAvatar } from '../components/user/UserAvatar';
+
+interface Collaborator {
+  id: string;
+  name: string;
+  avatar_url?: string;
+}
 
 export function SupercurationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +44,8 @@ export function SupercurationDetailPage() {
   const { updateLink } = useLinkStore();
   const { topics } = useCategoryStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCollaboratorModal, setShowCollaboratorModal] = useState(false);
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
 
   const handleTagFilter = (tag: string) => {
     setSelectedFilters(prev => {
@@ -66,6 +76,7 @@ export function SupercurationDetailPage() {
         } as Supercuration;
 
         setSupercuration(supercurationData);
+        setCollaborators(supercurationData.collaborators || []);
 
         // Fetch associated links
         const linksRef = collection(db, 'links');
@@ -96,7 +107,11 @@ export function SupercurationDetailPage() {
       })
     : links;
 
-  const isOwner = user?.id === supercuration?.created_by;
+  const canEdit = (userId?: string) => {
+    if (!userId || !supercuration) return false;
+    return userId === supercuration.created_by || 
+      (supercuration.collaborators || []).some(c => c.id === userId);
+  };
 
   const handleAddResource = async (linkData: LinkType) => {
     if (!id || !user?.id) return;
@@ -374,6 +389,45 @@ export function SupercurationDetailPage() {
     setShowAddResource(false);
   };
 
+  const handleAddCollaborator = async (user: { id: string; name: string; avatar_url?: string }) => {
+    if (!id || !supercuration) return;
+    
+    try {
+      await updateDoc(doc(db, 'supercurations', id), {
+        collaborators: arrayUnion({
+          id: user.id,
+          name: user.name,
+          avatar_url: user.avatar_url
+        })
+      });
+
+      setCollaborators(prev => [...prev, user]);
+      toast.success(`Added ${user.name} as collaborator`);
+    } catch (err) {
+      console.error('Error adding collaborator:', err);
+      toast.error('Failed to add collaborator');
+    }
+  };
+
+  const handleRemoveCollaborator = async (userId: string) => {
+    if (!id || !supercuration) return;
+    
+    try {
+      const collaborator = collaborators.find(c => c.id === userId);
+      if (!collaborator) return;
+
+      await updateDoc(doc(db, 'supercurations', id), {
+        collaborators: arrayRemove(collaborator)
+      });
+
+      setCollaborators(prev => prev.filter(c => c.id !== userId));
+      toast.success(`Removed collaborator`);
+    } catch (err) {
+      console.error('Error removing collaborator:', err);
+      toast.error('Failed to remove collaborator');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -404,7 +458,7 @@ export function SupercurationDetailPage() {
               </span>
             )}
           </div>
-          {isOwner && (
+          {canEdit(user?.id) && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -419,6 +473,13 @@ export function SupercurationDetailPage() {
               >
                 <Tag className="w-4 h-4" />
                 Edit Tags
+              </button>
+              <button
+                onClick={() => setShowCollaboratorModal(true)}
+                className="flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
+              >
+                <Users className="w-4 h-4" />
+                Manage Collaborators
               </button>
             </div>
           )}
@@ -492,7 +553,7 @@ export function SupercurationDetailPage() {
 
       {viewMode === 'grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {isOwner && (
+          {canEdit(user?.id) && (
             <button
               onClick={() => setShowAddResource(true)}
               className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow-sm p-8 border-2 border-dashed border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors group"
@@ -512,7 +573,7 @@ export function SupercurationDetailPage() {
                 onEdit={() => setEditingLink(link)}
                 onDelete={() => setDeletingResourceId(link.id)}
                 showUserInfo={true}
-                editable={isOwner}
+                editable={canEdit(user?.id)}
                 onSupercurationDetail={viewMode === 'grid'}
               />
               {(link.supercuration_tags?.[id || ''] ?? []).length > 0 && (
@@ -544,7 +605,7 @@ export function SupercurationDetailPage() {
 
       {viewMode === 'list' && (
         <div className="space-y-4">
-          {isOwner && (
+          {canEdit(user?.id) && (
             <button
               onClick={() => setShowAddResource(true)}
               className="w-full flex items-center justify-center bg-white rounded-lg shadow-sm p-4 border-2 border-dashed border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors group"
@@ -564,7 +625,7 @@ export function SupercurationDetailPage() {
               onEdit={() => setEditingLink(link)}
               onDelete={() => setDeletingResourceId(link.id)}
               showUserInfo={true}
-              editable={isOwner}
+              editable={canEdit(user?.id)}
               onSupercurationDetail={viewMode === 'list'}
             />
           ))}
@@ -768,6 +829,59 @@ export function SupercurationDetailPage() {
               : []
           }
         />
+      )}
+
+      {showCollaboratorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full mx-4">
+            <div className="p-6 border-b">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Manage Collaborators</h2>
+                <button
+                  onClick={() => setShowCollaboratorModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Add Collaborator</h3>
+                <UserSearch
+                  onSelect={handleAddCollaborator}
+                  exclude={[user?.id || '', ...collaborators.map(c => c.id)]}
+                />
+              </div>
+
+              {collaborators.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Current Collaborators</h3>
+                  <div className="space-y-2">
+                    {collaborators.map((collaborator) => (
+                      <div
+                        key={collaborator.id}
+                        className="flex items-center justify-between p-2 rounded-lg bg-gray-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <UserAvatar user={collaborator} className="w-8 h-8" />
+                          <span className="text-sm font-medium">{collaborator.name}</span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveCollaborator(collaborator.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
