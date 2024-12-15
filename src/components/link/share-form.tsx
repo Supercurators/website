@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLinkStore } from '../../store/linkStore';
-import { AIUrlExtractor } from '../AIUrlExtractor';
+import { LinkFetcher } from './link-fetcher';
 import { LinkContentEdit } from './link-content-edit';
-import { LinkPreviewInput } from './LinkPreviewInput';
+import { LinkPreviewInput } from './link-preview';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import type { Supercuration, Link as LinkType } from '../../types';
@@ -90,7 +90,7 @@ export function ShareForm({ supercurationId, onLinkAdded }: ShareFormProps) {
 
       {showAIExtractor && (
         <div className="mt-4">
-          <AIUrlExtractor />
+          <LinkFetcher />
         </div>
       )}
 

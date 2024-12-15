@@ -8,7 +8,7 @@ import { Link as LinkType } from '../types';
 import { ArrowLeft, Calendar, Share2, Pencil } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { LinkContentEdit } from '../components/link/link-content-edit';
-import { ShareModal } from '../components/link/ShareModal';
+import { ShareModal } from '../components/link/share-modal';
 
 interface Supercuration {
   id: string;

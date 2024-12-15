@@ -20,6 +20,7 @@ import { PublicLayout } from './components/layout/PublicLayout';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { Toaster } from 'react-hot-toast';
 import { LinkDetailPage } from './pages/LinkDetailPage';
+import { HomePage } from './pages/HomePage';
 
 export function App() {
   const initialize = useAuthStore(state => state.initialize);
@@ -66,7 +67,7 @@ export function App() {
             </Route>
 
             <Route element={<ProtectedLayout />}>
-              <Route path="/home" element={<SavedPage />} />
+              <Route path="/home" element={<HomePage />} />
               <Route path="/saved" element={<SavedPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/supercurations" element={<SupercurationsPage />} />

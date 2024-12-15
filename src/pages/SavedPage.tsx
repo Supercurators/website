@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Clock, Tag } from 'lucide-react';
+import { Clock, ArrowUpDown } from 'lucide-react';
 import { useLinkStore } from '../store/linkStore';
 import { useCategoryStore } from '../store/categoryStore';
 import { auth, db } from '../lib/firebase';
 import { collection, query, where, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { TopicManager } from '../components/TopicManager';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
-import { TopicFilter } from '../components/TopicFilter';
-import { ShareForm } from '../components/link/ShareForm';
+import { ShareForm } from '../components/link/share-form';
 import { LinkContentEdit } from '../components/link/link-content-edit';
 import type { Link } from '../types';
 import { toast } from 'react-hot-toast';
@@ -39,12 +37,11 @@ export function SavedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState('all');
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [view, setView] = useState<'shared' | 'reposts'>('shared');
-  const [showTopicManager, setShowTopicManager] = useState(false);
   const [editingLink, setEditingLink] = useState<Link | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [formatFilter, setFormatFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState('newest');
 
   const FORMATS = [
     { emoji: '📝', label: 'Article' },
@@ -57,6 +54,12 @@ export function SavedPage() {
     { emoji: '🤖', label: 'AI' },
     { emoji: '💻', label: 'Dev' },
     { emoji: '🔗', label: 'Other' }
+  ];
+
+  const SORT_OPTIONS = [
+    { value: 'newest', label: 'Newest First' },
+    { value: 'oldest', label: 'Oldest First' },
+    { value: 'most_liked', label: 'Most Liked' },
   ];
 
   // Store the query in a ref to reuse it
@@ -76,14 +79,16 @@ export function SavedPage() {
           linksQuery = query(
             collection(db, 'links'),
             where('created_by', '==', currentUser.uid),
-            orderBy('created_at', 'desc')
+            orderBy(sortBy === 'most_liked' ? 'likes' : 'created_at', 
+                   sortBy === 'oldest' ? 'asc' : 'desc')
           );
         } else {
           linksQuery = query(
             collection(db, 'links'),
             where('created_by', '==', currentUser.uid),
             where('original_post_id', '!=', null),
-            orderBy('created_at', 'desc')
+            orderBy(sortBy === 'most_liked' ? 'likes' : 'created_at', 
+                   sortBy === 'oldest' ? 'asc' : 'desc')
           );
         }
 
@@ -122,7 +127,7 @@ export function SavedPage() {
     };
 
     fetchLinks();
-  }, [view]);
+  }, [view, sortBy]);
 
   useEffect(() => {
     const unsubscribe = useLinkStore.subscribe(() => {
@@ -172,12 +177,7 @@ export function SavedPage() {
   const getFilteredLinks = () => {
     let filtered = [...links];
 
-    // Filter by topics
-    if (selectedTopics.length > 0) {
-      filtered = filtered.filter(link =>
-        selectedTopics.some(topicId => link.topic_ids?.includes(topicId))
-      );
-    }
+
 
     // Filter by format
     if (formatFilter) {
@@ -307,7 +307,6 @@ export function SavedPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4">
-      <ShareForm supercurationId={undefined} />
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -335,7 +334,7 @@ export function SavedPage() {
             </button>
           </div>
         </div>
-
+      <ShareForm supercurationId={undefined} />
         {/* Filter Bar */}
         <div className="bg-white p-4 rounded-lg shadow-sm space-y-4">
           <div className="flex items-center justify-between">
@@ -353,14 +352,23 @@ export function SavedPage() {
                 </select>
                 <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               </div>
+
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="appearance-none pl-8 pr-4 py-1.5 bg-white border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {SORT_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              </div>
             </div>
-            <button
-              onClick={() => setShowTopicManager(true)}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
-            >
-              <Tag className="w-4 h-4" />
-              Manage Topics
-            </button>
+            
           </div>
 
           {/* Format Filter */}
@@ -390,19 +398,6 @@ export function SavedPage() {
               </button>
             ))}
           </div>
-
-          {/* Replace the existing Topic Filters section with TopicFilter component */}
-          <TopicFilter
-            topics={topics}
-            selectedTopics={selectedTopics}
-            onTopicToggle={(topicId) => {
-              setSelectedTopics(prev =>
-                prev.includes(topicId)
-                  ? prev.filter(id => id !== topicId)
-                  : [...prev, topicId]
-              );
-            }}
-          />
         </div>
 
         {/* Links Feed */}
@@ -430,13 +425,6 @@ export function SavedPage() {
         </div>
 
         {/* Modals */}
-        {showTopicManager && (
-          <TopicManager
-            isOpen={true}
-            onClose={() => setShowTopicManager(false)}
-          />
-        )}
-
         {editingLink && (
           <LinkContentEdit
             onClose={() => setEditingLink(null)}

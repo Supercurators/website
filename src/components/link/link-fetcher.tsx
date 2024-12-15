@@ -1,13 +1,13 @@
 import { useState, useRef } from 'react';
 import { Upload, FileText, Loader, CheckSquare, Square, FolderPlus } from 'lucide-react';
-import { useSupercurationStore } from '../store/supercurationStore';
-import { useLinkStore } from '../store/linkStore';
-import { LinkContentEdit } from './link/link-content-edit';
-import { ExtractedLinkCard } from './ExtractedLinkCard';
-import { processImage, extractUrlsFromText, fetchLinkPreviews } from '../lib/urlExtractor';
-import type { ExtractedLink } from '../types';
+import { useSupercurationStore } from '../../store/supercurationStore';
+import { useLinkStore } from '../../store/linkStore';
+import { LinkContentEdit } from './link-content-edit';
+import { ExtractedLinkCard } from '../ExtractedLinkCard';
+import { processImage, extractUrlsFromText, fetchLinkPreviews } from '../../lib/urlExtractor';
+import type { ExtractedLink } from '../../types';
 
-export function AIUrlExtractor() {
+export function LinkFetcher() {
   const { supercurations } = useSupercurationStore();
   const { addLink } = useLinkStore();
   const [loading, setLoading] = useState(false);

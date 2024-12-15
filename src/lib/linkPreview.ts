@@ -1,5 +1,5 @@
 import { fetchWithProxy } from './proxyConfig';
-import { normalizeUrl } from '../components/link/ShareForm';
+import { normalizeUrl } from '../components/link/share-form';
 
 export async function getLinkPreview(url: string) {
   try {

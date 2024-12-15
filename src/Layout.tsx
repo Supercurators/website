@@ -27,19 +27,6 @@ export function Layout({ children }: LayoutProps) {
 
   const NavLinks = () => (
     <>
-      {/* <Link
-        to="/home"
-        className={`flex items-center px-2 py-3 text-lg rounded-full transition-colors ${
-          isActive('/home')
-            ? 'font-bold'
-            : 'text-gray-700 hover:bg-gray-50'
-        }`}
-        onClick={() => setShowMobileMenu(false)}
-      >
-        <Home className="w-6 h-6 mr-4" />
-        Home
-      </Link> */}
-
       <Link
         to="/saved"
         className={`flex items-center px-2 py-3 text-lg rounded-full transition-colors ${

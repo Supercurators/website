@@ -11,7 +11,7 @@ import type { Supercuration, Link as LinkType } from '../types';
 import { Link as RouterLink } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useLinkStore } from '../store/linkStore';
-import { ShareForm } from '../components/link/ShareForm';
+import { ShareForm } from '../components/link/share-form';
 import { LinkDisplay } from '../components/link/link-display';
 import { useCategoryStore } from '../store/categoryStore';
 import { UserSearch } from '../components/user/UserSearch';

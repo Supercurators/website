@@ -7,7 +7,7 @@ import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { LinkContentEdit } from '../components/link/link-content-edit';
 import type { Link } from '../types';
 import { cleanupInvalidLinks } from '../lib/firestore';
-import { ShareForm } from '../components/link/ShareForm';
+import { ShareForm } from '../components/link/share-form';
 import { LinkDisplay } from '../components/link/link-display';
 
 export function HomePage() {
